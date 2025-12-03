@@ -1,0 +1,1239 @@
+# 🚀 Future Features - สุดยอดระบบ ERP โรงงานเสื้อ
+
+## 📊 สถานะปัจจุบัน vs อนาคต
+
+### ✅ มีแล้ว
+- Stock Management
+- Production Jobs
+- CRM / Customers
+- DTG Calculator
+- Audit Logs
+- User Roles
+- Notifications (LINE)
+
+### 📝 วางแผนแล้ว (รอพัฒนา)
+- Order System
+- Design Workflow
+- Mockup Approval
+- Rework/QC Tracking
+- Change Requests
+
+### 🔮 ควรเพิ่ม (แนะนำ)
+👇 ดูรายละเอียดด้านล่าง
+
+---
+
+## 🏭 1. Addon/Component Production Tracking
+
+> **ปัญหา:** ป้ายแท็ก, ป้ายคอ, ถุงแพค ฯลฯ มีกระบวนการผลิตของมันเอง
+
+### แหล่งที่มาของ Addon
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ADDON SOURCES                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌────────────────┐     ┌────────────────┐                      │
+│  │  ผลิตเอง       │     │  สั่งซัพพลายเออร์│                      │
+│  │  (In-house)    │     │  (Outsource)   │                      │
+│  ├────────────────┤     ├────────────────┤                      │
+│  │ • Hang Tag     │     │ • ป้ายทอ       │                      │
+│  │ • สติกเกอร์    │     │ • ป้ายหนัง      │                      │
+│  │ • การ์ดขอบคุณ  │     │ • กระดุม       │                      │
+│  │               │     │ • ซิป          │                      │
+│  └────────────────┘     └────────────────┘                      │
+│          │                     │                                │
+│          ▼                     ▼                                │
+│  ┌────────────────┐     ┌────────────────┐                      │
+│  │ Production     │     │ Purchase Order │                      │
+│  │ Queue          │     │ + Delivery     │                      │
+│  │ (เหมือนงานปกติ) │     │ Tracking       │                      │
+│  └────────────────┘     └────────────────┘                      │
+│          │                     │                                │
+│          └──────────┬──────────┘                                │
+│                     ▼                                           │
+│            ┌────────────────┐                                   │
+│            │ Stock / Ready  │                                   │
+│            │ for Assembly   │                                   │
+│            └────────────────┘                                   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Database Schema
+```sql
+-- Addon Types
+CREATE TABLE addon_types (
+  id UUID PRIMARY KEY,
+  code TEXT UNIQUE, -- 'WOVEN_LABEL', 'HANG_TAG', 'ZIPPER'
+  name TEXT,
+  category TEXT, -- 'label', 'packaging', 'accessory'
+  default_source TEXT, -- 'in_house', 'supplier'
+  default_lead_time_days INTEGER,
+  is_active BOOLEAN DEFAULT true
+);
+
+-- Addon Orders (สั่งจาก Supplier)
+CREATE TABLE addon_orders (
+  id UUID PRIMARY KEY,
+  addon_type_id UUID REFERENCES addon_types(id),
+  supplier_id UUID REFERENCES suppliers(id),
+  
+  -- Order Info
+  order_number TEXT,
+  quantity INTEGER,
+  unit_price DECIMAL(10,2),
+  total_price DECIMAL(12,2),
+  
+  -- Status
+  status TEXT, -- 'ordered', 'confirmed', 'producing', 'shipped', 'received'
+  
+  -- Dates
+  ordered_at TIMESTAMPTZ,
+  expected_delivery DATE,
+  received_at TIMESTAMPTZ,
+  
+  -- Link to Order (ถ้าสั่งเพื่อ Order นี้โดยเฉพาะ)
+  linked_order_id UUID REFERENCES orders(id),
+  
+  notes TEXT
+);
+
+-- Addon Inventory (สต๊อก Addon)
+CREATE TABLE addon_inventory (
+  id UUID PRIMARY KEY,
+  addon_type_id UUID REFERENCES addon_types(id),
+  
+  -- Design/Variant
+  design_name TEXT, -- "โลโก้ บริษัท ABC"
+  design_file_url TEXT,
+  
+  -- Stock
+  quantity INTEGER DEFAULT 0,
+  min_level INTEGER DEFAULT 100,
+  
+  -- For specific customer?
+  customer_id UUID REFERENCES customers(id),
+  
+  -- Cost
+  unit_cost DECIMAL(10,2)
+);
+```
+
+### ตัวอย่าง Flow
+```
+Order #1234 ต้องการ:
+├── 🏷️ ป้ายทอติดคอ x 100 ชิ้น
+│   ├── Source: สั่ง Supplier
+│   ├── Lead Time: 7 วัน
+│   ├── Status: 📦 Shipped (มาถึงวันที่ 20)
+│   └── Cost: 800 บาท
+│
+├── 🏷️ Hang Tag x 100 ชิ้น
+│   ├── Source: ผลิตเอง (In-house)
+│   ├── Status: 🖨️ กำลังพิมพ์
+│   └── Cost: 200 บาท
+│
+└── 📦 ถุงซิป x 100 ชิ้น
+    ├── Source: ใช้จาก Stock
+    ├── Status: ✅ Ready
+    └── Cost: 150 บาท
+```
+
+---
+
+## 📦 2. Purchase Order System
+
+> **ปัญหา:** ต้องสั่งของจาก Supplier หลายราย ติดตามยาก
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  PURCHASE ORDER SYSTEM                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📝 Create PO                                                    │
+│  ├── เลือก Supplier                                              │
+│  ├── เลือกสินค้า (เสื้อเปล่า, ป้าย, ซิป, etc.)                    │
+│  ├── จำนวน + ราคา                                                │
+│  ├── วันที่ต้องการรับ                                             │
+│  └── Link กับ Order (ถ้าสั่งเพื่องานนี้)                          │
+│                                                                  │
+│  📊 PO Status Tracking                                           │
+│  ├── Draft → Sent → Confirmed → Shipped → Received               │
+│  ├── Partial Receive (รับบางส่วน)                                │
+│  └── Quality Check on Receive                                    │
+│                                                                  │
+│  💰 Payment Tracking                                             │
+│  ├── ยอดค้างชำระ per Supplier                                    │
+│  ├── ประวัติการจ่าย                                               │
+│  └── Credit Term per Supplier                                    │
+│                                                                  │
+│  📈 Reports                                                      │
+│  ├── Purchase History                                            │
+│  ├── Supplier Performance (ส่งตรงเวลามั้ย)                        │
+│  └── Price Comparison                                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📅 3. Production Scheduling / Capacity Planning
+
+> **ปัญหา:** ไม่รู้ว่าวันนี้ทำอะไรได้เท่าไหร่ งานล้น/งานน้อย
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              PRODUCTION CALENDAR                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ธันวาคม 2024                                                    │
+│  ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┐                    │
+│  │ จ.  │ อ.  │ พ.  │ พฤ. │ ศ.  │ ส.  │ อา. │                    │
+│  ├─────┼─────┼─────┼─────┼─────┼─────┼─────┤                    │
+│  │ 16  │ 17  │ 18  │ 19  │ 20  │ 21  │ 22  │                    │
+│  │▓▓▓▓▓│▓▓▓▓░│▓▓▓░░│▓▓░░░│░░░░░│     │     │                    │
+│  │95%  │80%  │60%  │40%  │10%  │ OFF │ OFF │                    │
+│  ├─────┼─────┼─────┼─────┼─────┼─────┼─────┤                    │
+│  │ 23  │ 24  │ 25  │ 26  │ 27  │ 28  │ 29  │                    │
+│  │▓▓▓░░│▓▓░░░│░░░░░│░░░░░│░░░░░│     │     │                    │
+│  │60%  │40%  │FREE │FREE │FREE │ OFF │ OFF │                    │
+│  └─────┴─────┴─────┴─────┴─────┴─────┴─────┘                    │
+│                                                                  │
+│  Capacity: 500 ตัว/วัน (DTG)                                     │
+│                                                                  │
+│  📋 วันที่ 16 ธ.ค.:                                               │
+│  ├── Order #1234: DTG 200 ตัว                                    │
+│  ├── Order #1235: DTG 150 ตัว                                    │
+│  └── Order #1236: DTG 125 ตัว                                    │
+│      Total: 475/500 (95%)                                        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### ประโยชน์
+- รู้ว่าวันไหนว่าง/เต็ม
+- กำหนด Due Date ได้แม่นยำ
+- เห็น Bottleneck
+- วางแผนล่วงหน้า
+
+---
+
+## 💰 4. Financial Module
+
+> **ปัญหา:** ต้องออกใบเสนอราคา, ใบแจ้งหนี้, ใบเสร็จ แยกกัน
+
+### Documents
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  DOCUMENT FLOW                                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📄 Quotation (ใบเสนอราคา)                                       │
+│       │                                                          │
+│       ▼ (ลูกค้าตกลง)                                             │
+│  📄 Order Confirmation (ยืนยันออเดอร์)                           │
+│       │                                                          │
+│       ▼ (เริ่มผลิต)                                              │
+│  📄 Invoice (ใบแจ้งหนี้)                                         │
+│       │                                                          │
+│       ▼ (ลูกค้าจ่ายเงิน)                                         │
+│  📄 Receipt (ใบเสร็จรับเงิน)                                     │
+│       │                                                          │
+│       ▼ (ส่งของ)                                                 │
+│  📄 Delivery Note (ใบส่งของ)                                     │
+│       │                                                          │
+│       ▼ (ต้องการใบกำกับภาษี)                                     │
+│  📄 Tax Invoice (ใบกำกับภาษี)                                    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Features
+- ออกเอกสารจาก Order อัตโนมัติ
+- PDF Export
+- ส่ง Email/LINE ให้ลูกค้า
+- ลำดับเลขเอกสารอัตโนมัติ
+- รายงานภาษี
+
+---
+
+## 🔧 5. Machine & Equipment Management
+
+> **ปัญหา:** เครื่อง DTG เสีย ไม่รู้ว่าซ่อมครั้งสุดท้ายเมื่อไหร่
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  MACHINE MANAGEMENT                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  🖨️ DTG Printer #1 (Epson F2100)                                │
+│  ├── Status: 🟢 Online                                          │
+│  ├── Today's Output: 320 prints                                 │
+│  ├── Ink Levels: C: 45% M: 60% Y: 72% K: 38% W: 25%            │
+│  ├── Next Maintenance: 5 วัน (25/12)                            │
+│  └── Total Prints: 45,230                                       │
+│                                                                  │
+│  🖨️ DTG Printer #2 (Epson F2100)                                │
+│  ├── Status: 🟡 Maintenance                                     │
+│  ├── Issue: เปลี่ยนหัวพิมพ์                                       │
+│  └── ETA: 2 ชม.                                                 │
+│                                                                  │
+│  🧵 Embroidery Machine #1                                        │
+│  ├── Status: 🟢 Running                                         │
+│  ├── Current Job: Order #1234 (45/100)                          │
+│  └── Estimated Complete: 14:30                                  │
+│                                                                  │
+│  📊 Maintenance History                                          │
+│  ├── 15/12: DTG#1 - ทำความสะอาดหัวพิมพ์                          │
+│  ├── 10/12: DTG#2 - เปลี่ยนหมึก                                  │
+│  └── 05/12: EMB#1 - เปลี่ยนเข็ม                                  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📱 6. Customer Portal / LINE LIFF
+
+> **ปัญหา:** ลูกค้าถามสถานะทุกวัน แอดมินเสียเวลาตอบ
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           CUSTOMER PORTAL (LINE LIFF)                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────────────────────┐                        │
+│  │     📱 LINE Mini App                │                        │
+│  ├─────────────────────────────────────┤                        │
+│  │                                     │                        │
+│  │  สวัสดีครับ คุณสมชาย                 │                        │
+│  │                                     │                        │
+│  │  📦 Order ของคุณ:                    │                        │
+│  │  ┌─────────────────────────────┐   │                        │
+│  │  │ #1234                       │   │                        │
+│  │  │ เสื้อทีมฟุตบอล 50 ตัว        │   │                        │
+│  │  │ Status: 🔄 กำลังผลิต        │   │                        │
+│  │  │ Progress: ▓▓▓▓▓▓░░ 75%     │   │                        │
+│  │  │ Due: 25 ธ.ค. 2024           │   │                        │
+│  │  │                             │   │                        │
+│  │  │ [ดูรายละเอียด] [ดู Mockup]   │   │                        │
+│  │  └─────────────────────────────┘   │                        │
+│  │                                     │                        │
+│  │  📋 ประวัติ Order                   │                        │
+│  │  💬 ติดต่อแอดมิน                    │                        │
+│  │  📄 ดาวน์โหลดใบเสร็จ                 │                        │
+│  │                                     │                        │
+│  └─────────────────────────────────────┘                        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### ประโยชน์
+- ลูกค้าดูสถานะเอง 24/7
+- ลด Chat support 50%+
+- Approve Mockup ผ่าน LINE
+- รับแจ้งเตือนอัตโนมัติ
+
+---
+
+## 📊 7. Advanced Reports & Analytics
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    REPORTS                                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  💰 Financial Reports                                            │
+│  ├── Revenue by Period                                          │
+│  ├── Revenue by Customer / Work Type                            │
+│  ├── Cost Analysis                                              │
+│  ├── Profit Margin per Order                                    │
+│  └── Accounts Receivable Aging                                  │
+│                                                                  │
+│  🏭 Production Reports                                           │
+│  ├── Production Output (daily/weekly/monthly)                   │
+│  ├── Machine Utilization                                        │
+│  ├── Defect Rate                                                │
+│  ├── Rework Cost                                                │
+│  └── On-time Delivery Rate                                      │
+│                                                                  │
+│  📦 Inventory Reports                                            │
+│  ├── Stock Valuation                                            │
+│  ├── Stock Movement                                             │
+│  ├── Slow-moving Items                                          │
+│  └── Reorder Suggestions                                        │
+│                                                                  │
+│  👥 Customer Reports                                             │
+│  ├── Customer Lifetime Value                                    │
+│  ├── Top Customers                                              │
+│  ├── Customer Acquisition Cost                                  │
+│  └── Retention Rate                                             │
+│                                                                  │
+│  🎨 Design Reports                                               │
+│  ├── Designer Performance                                       │
+│  ├── Revision Analysis                                          │
+│  └── Average Design Time                                        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📱 8. Mobile App for Production Floor
+
+> **ปัญหา:** พนักงานผลิตต้องมาดูคอมฯ ทุกครั้ง
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│            PRODUCTION MOBILE APP                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📱 สำหรับพนักงาน:                                               │
+│  ├── ดูงานที่ได้รับมอบหมาย                                       │
+│  ├── Scan QR เพื่อเริ่ม/จบงาน                                    │
+│  ├── รายงานปัญหา + ถ่ายรูป                                       │
+│  ├── บันทึก QC Result                                           │
+│  └── ดู Work Instructions                                       │
+│                                                                  │
+│  📱 สำหรับหัวหน้า:                                                │
+│  ├── ดูสถานะงานทั้งหมด                                           │
+│  ├── มอบหมายงาน                                                  │
+│  ├── Approve/Reject                                             │
+│  └── Dashboard real-time                                        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🏷️ 9. Barcode/QR System
+
+> **ปัญหา:** หาของไม่เจอ ติดตามยาก
+
+### Applications
+```
+📦 สินค้า (เสื้อเปล่า)
+├── QR Code per SKU
+├── Scan เพื่อดูข้อมูล/สต๊อก
+└── Scan เพื่อเบิก/รับ
+
+📋 Order
+├── QR Code per Order
+├── Scan เพื่อดูรายละเอียด
+├── Scan เพื่ออัพเดทสถานะ
+└── พิมพ์ติดถุงส่งของ
+
+🏷️ Work Item
+├── QR Code per Item
+├── Scan เริ่ม/จบการผลิต
+└── Track ว่าอยู่ขั้นตอนไหน
+```
+
+---
+
+## ✅ สรุป Priority
+
+### 🔴 High Priority (ควรทำเร็ว)
+1. **Addon Production Tracking** - ติดตามป้าย/แพคเกจ
+2. **Purchase Order** - สั่งของจาก Supplier
+3. **Financial Documents** - ใบเสนอราคา/ใบเสร็จ
+
+### 🟡 Medium Priority
+4. **Production Scheduling** - วางแผนกำลังผลิต
+5. **Customer Portal (LINE)** - ลูกค้าดูสถานะเอง
+6. **Advanced Reports** - รายงานวิเคราะห์
+
+### 🟢 Nice to Have
+7. **Machine Management** - ติดตามเครื่องจักร
+8. **Mobile App** - สำหรับพนักงาน
+9. **Barcode/QR System** - Track ด้วย QR
+
+---
+
+## 💵 10. Job Costing / Profit Analysis
+
+> **ปัญหา:** ไม่รู้ว่างานนี้ได้กำไรจริงเท่าไหร่
+
+### ต้นทุนที่ต้อง Track
+```
+Order #1234 - Cost Breakdown:
+
+📦 วัตถุดิบ (Materials)
+├── เสื้อเปล่า: 100 x 85 = 8,500 บาท
+├── หมึก DTG: 120 บาท (คำนวณจาก CC)
+├── Pretreat: 100 x 4 = 400 บาท
+├── ป้ายทอ: 100 x 8 = 800 บาท
+└── ถุงแพค: 100 x 3 = 300 บาท
+    Subtotal: 10,120 บาท
+
+👷 แรงงาน (Labor)
+├── ออกแบบ: 2 ชม. x 150 = 300 บาท
+├── พิมพ์ DTG: 3 ชม. x 200 = 600 บาท
+├── QC + แพค: 1.5 ชม. x 100 = 150 บาท
+    Subtotal: 1,050 บาท
+
+🏭 Overhead
+├── ค่าเสื่อมเครื่อง: 200 บาท
+├── ค่าไฟ: 150 บาท
+    Subtotal: 350 บาท
+
+💰 สรุป:
+├── Total Cost: 11,520 บาท
+├── Quoted Price: 18,000 บาท
+├── Gross Profit: 6,480 บาท (36%)
+└── 🔴 Rework Cost: -450 บาท
+    Net Profit: 6,030 บาท (33.5%)
+```
+
+---
+
+## 📋 11. Sample/Prototype Management
+
+> **ปัญหา:** ลูกค้าขอทำตัวอย่างก่อน แต่ไม่มีที่เก็บประวัติ
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  SAMPLE MANAGEMENT                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📋 Sample Request                                               │
+│  ├── สร้าง Sample จาก Order (ก่อน Mass Production)               │
+│  ├── Sample แยก (ยังไม่มี Order)                                 │
+│  └── Track ค่าใช้จ่าย Sample                                     │
+│                                                                  │
+│  📦 Sample Status                                                │
+│  ├── Requested → In Production → Sent → Approved/Rejected       │
+│  └── ถ้า Approved → Convert to Order                            │
+│                                                                  │
+│  📊 Sample Library                                               │
+│  ├── เก็บรูป Sample ทั้งหมด                                       │
+│  ├── ค้นหาจาก Customer / Work Type                              │
+│  └── ใช้เป็น Reference สำหรับงานใหม่                             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📞 12. Communication Log
+
+> **ปัญหา:** จำไม่ได้ว่าคุยอะไรกับลูกค้าไว้
+
+### Features
+```
+Customer: บริษัท ABC
+
+📞 Communication History:
+┌─────────────────────────────────────────────────────────────────┐
+│ 18/12 14:30 - LINE Chat (สมศรี)                                │
+│ "ลูกค้าถามว่าส่งได้ทันวันที่ 25 มั้ย บอกว่าได้"                     │
+├─────────────────────────────────────────────────────────────────┤
+│ 17/12 10:00 - โทรศัพท์ (สมชาย)                                  │
+│ "โทรแจ้งราคา ลูกค้าขอส่วนลด 5% ตกลงแล้ว"                         │
+├─────────────────────────────────────────────────────────────────┤
+│ 15/12 09:15 - Email                                             │
+│ "ส่งใบเสนอราคาแล้ว รอลูกค้าตอบกลับ"                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔄 13. Recurring Orders / Templates
+
+> **ปัญหา:** ลูกค้าประจำสั่งซ้ำบ่อย ต้องกรอกใหม่ทุกครั้ง
+
+### Order Templates
+```
+📋 Saved Templates:
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Template: "บริษัท ABC - ยูนิฟอร์มประจำปี"                        │
+├─────────────────────────────────────────────────────────────────┤
+│ Products:                                                       │
+│ ├── เสื้อโปโล สีขาว (S:10, M:30, L:40, XL:15, 2XL:5)            │
+│ ├── DTG หน้าอก A5 - โลโก้บริษัท                                  │
+│ ├── ปักหลัง 15x10 - ชื่อบริษัท                                   │
+│ └── ป้ายทอติดคอ                                                  │
+│                                                                  │
+│ Last Used: 15/06/2024                                           │
+│ [ใช้ Template นี้] [แก้ไข]                                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Recurring Schedule
+```
+📅 Auto-remind:
+├── บริษัท ABC - ทุก 6 เดือน (ครั้งต่อไป: มิ.ย. 2025)
+├── ร้าน XYZ - ทุกเดือน (ครั้งต่อไป: 1 ม.ค. 2025)
+└── โรงเรียน DEF - ทุกปี (ครั้งต่อไป: มี.ค. 2025)
+```
+
+---
+
+## 💰 14. Price Lists / Customer Pricing
+
+> **ปัญหา:** ลูกค้า VIP ได้ราคาพิเศษ จำไม่ได้
+
+### Pricing Tiers
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  PRICE LISTS                                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📊 Default Price List (ลูกค้าทั่วไป)                            │
+│  ├── DTG A4: 120 บาท/ตำแหน่ง                                    │
+│  ├── DTG A3: 180 บาท/ตำแหน่ง                                    │
+│  └── งานปัก: 45 บาท/1,000 stitch                                │
+│                                                                  │
+│  📊 VIP Price List (ยอดสั่ง > 100,000/ปี)                        │
+│  ├── DTG A4: 100 บาท/ตำแหน่ง (-17%)                             │
+│  ├── DTG A3: 150 บาท/ตำแหน่ง (-17%)                             │
+│  └── งานปัก: 38 บาท/1,000 stitch (-15%)                         │
+│                                                                  │
+│  📊 Wholesale Price List (ตัวแทนจำหน่าย)                         │
+│  ├── DTG A4: 80 บาท/ตำแหน่ง (-33%)                              │
+│  └── ...                                                         │
+│                                                                  │
+│  🔗 Customer Assignment:                                         │
+│  ├── บริษัท ABC → VIP Price List                                │
+│  ├── ร้าน XYZ → Wholesale Price List                            │
+│  └── Others → Default Price List                                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📦 15. Return & Warranty Management
+
+> **ปัญหา:** ลูกค้าส่งคืน/เคลมไม่มีที่บันทึก
+
+### Return Flow
+```
+Return Request #RET-001
+├── Order: #1234
+├── Customer: บริษัท ABC
+├── Reason: สีไม่ตรง Mockup
+├── Quantity: 5 ตัว
+├── Status: 🔄 กำลังตรวจสอบ
+│
+├── Evidence: [รูป1] [รูป2]
+│
+├── Resolution Options:
+│   ├── [ผลิตใหม่ให้]
+│   ├── [คืนเงิน]
+│   ├── [ส่วนลดออเดอร์ถัดไป]
+│   └── [ปฏิเสธ - ไม่ใช่ความผิดเรา]
+│
+└── History:
+    ├── 18/12: ลูกค้าแจ้งเคลม
+    ├── 19/12: ได้รับสินค้าคืน
+    └── 20/12: QC ตรวจสอบ - รอตัดสินใจ
+```
+
+---
+
+## 🚚 16. Shipping Integration
+
+> **ปัญหา:** ต้องไปกรอกข้อมูลใน Kerry/Flash แยก
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              SHIPPING INTEGRATION                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📦 Supported Carriers:                                          │
+│  ├── Kerry Express (API)                                        │
+│  ├── Flash Express (API)                                        │
+│  ├── J&T Express (API)                                          │
+│  ├── Thailand Post (Manual)                                     │
+│  └── Grab/Lalamove (สำหรับในเมือง)                               │
+│                                                                  │
+│  🔧 Features:                                                    │
+│  ├── สร้าง Shipment จาก Order                                    │
+│  ├── พิมพ์ใบปะหน้าพัสดุ                                          │
+│  ├── Track สถานะจัดส่งอัตโนมัติ                                  │
+│  ├── แจ้งลูกค้าเมื่อส่งแล้ว                                       │
+│  └── คำนวณค่าส่งอัตโนมัติ                                        │
+│                                                                  │
+│  📊 Shipping Dashboard:                                          │
+│  ├── รอจัดส่ง: 15 orders                                         │
+│  ├── กำลังส่ง: 28 orders                                         │
+│  ├── ส่งถึงแล้ว: 142 orders                                      │
+│  └── มีปัญหา: 2 orders (ตีกลับ)                                   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 17. KPI Dashboard
+
+> **ปัญหา:** ไม่รู้ว่าธุรกิจเป็นยังไง ต้องรอสิ้นเดือน
+
+### Real-time KPIs
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           📊 DASHBOARD - December 2024                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  💰 Revenue                      📦 Orders                       │
+│  ┌─────────────────────┐        ┌─────────────────────┐         │
+│  │ This Month          │        │ This Month          │         │
+│  │ ฿ 485,000           │        │ 89 orders           │         │
+│  │ ▲ 12% vs last month │        │ ▲ 8% vs last month  │         │
+│  └─────────────────────┘        └─────────────────────┘         │
+│                                                                  │
+│  🏭 Production                   ⏱️ Lead Time                    │
+│  ┌─────────────────────┐        ┌─────────────────────┐         │
+│  │ Completed Today     │        │ Avg. Lead Time      │         │
+│  │ 12 orders (450 pcs) │        │ 5.2 days            │         │
+│  │ Capacity: 78%       │        │ ▼ 0.3 days improved │         │
+│  └─────────────────────┘        └─────────────────────┘         │
+│                                                                  │
+│  ✅ Quality                      😊 Customer                     │
+│  ┌─────────────────────┐        ┌─────────────────────┐         │
+│  │ QC Pass Rate        │        │ On-time Delivery    │         │
+│  │ 96.5%               │        │ 94%                 │         │
+│  │ ▲ 1.2% improved     │        │ ▼ 2% from target    │         │
+│  └─────────────────────┘        └─────────────────────┘         │
+│                                                                  │
+│  ⚠️ Alerts:                                                      │
+│  ├── 🔴 3 orders overdue                                        │
+│  ├── 🟡 5 items low stock                                       │
+│  └── 🟡 2 payments pending > 7 days                             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔔 18. Smart Alerts & Notifications
+
+> **ปัญหา:** มีปัญหาแต่ไม่รู้จนกว่าจะสาย
+
+### Alert Types
+```
+🔴 Critical (แจ้งทันที):
+├── Order เลย Due Date
+├── Stock หมด (ต้องใช้ใน Order ที่กำลังผลิต)
+├── QC Fail > 10%
+├── เครื่องจักรเสีย
+└── ลูกค้า VIP มีปัญหา
+
+🟡 Warning (แจ้งทุกวัน):
+├── Order ใกล้ Due Date (< 2 วัน)
+├── Stock ใกล้หมด
+├── Payment ค้างนาน > 7 วัน
+├── Mockup รอ approve > 3 วัน
+└── Design แก้ไข > 5 ครั้ง
+
+🟢 Info (สรุปรายสัปดาห์):
+├── สรุป Production
+├── สรุป Revenue
+├── Top Products
+└── Customer Feedback
+```
+
+### Notification Channels
+```
+📱 Push to:
+├── LINE (Admin Group)
+├── LINE (Production Group)
+├── Email (Manager)
+└── In-app Notification
+```
+
+---
+
+## 📁 19. File & Asset Management
+
+> **ปัญหา:** หาไฟล์งานไม่เจอ อยู่หลาย folder
+
+### Centralized Storage
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           FILE MANAGEMENT                                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📁 By Customer:                                                 │
+│  └── บริษัท ABC/                                                 │
+│      ├── Logos/                                                  │
+│      │   ├── logo_main.ai                                       │
+│      │   └── logo_white.png                                     │
+│      └── Orders/                                                 │
+│          ├── 2024-12-1234/                                      │
+│          │   ├── design_front.ai                                │
+│          │   ├── mockup_v2.jpg                                  │
+│          │   └── production_file.pdf                            │
+│          └── ...                                                │
+│                                                                  │
+│  🔍 Quick Search:                                                │
+│  ├── By Customer name                                           │
+│  ├── By Order number                                            │
+│  ├── By File type                                               │
+│  └── By Date                                                    │
+│                                                                  │
+│  📊 Storage Usage: 45.2 GB / 100 GB                             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ✅ Updated Priority Summary
+
+### 🔴 Phase 1 - Core (ต้องมี)
+1. Order System ✅ (วางแผนแล้ว)
+2. Design Workflow ✅ (วางแผนแล้ว)
+3. Addon Production Tracking
+4. Financial Documents (ใบเสนอราคา/ใบเสร็จ)
+
+### 🟠 Phase 2 - Operations
+5. Purchase Order System
+6. Production Scheduling
+7. Job Costing / Profit Analysis
+8. Shipping Integration
+
+### 🟡 Phase 3 - Customer Experience
+9. Customer Portal (LINE LIFF)
+10. Communication Log
+11. Return & Warranty
+
+### 🟢 Phase 4 - Optimization
+12. Smart Alerts
+13. KPI Dashboard
+14. Recurring Orders / Templates
+15. Price Lists
+
+### 🔵 Phase 5 - Advanced
+16. Machine Management
+17. Mobile App (Production)
+18. Barcode/QR System
+19. Sample Management
+20. File Management
+
+---
+
+---
+
+## 👷 20. Employee & Shift Management
+
+> **ปัญหา:** ไม่รู้ว่าใครทำงานวันไหน ประเมินผลงานยาก
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              EMPLOYEE MANAGEMENT                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  👤 Employee Profiles:                                           │
+│  ├── ข้อมูลพนักงาน + รูปภาพ                                      │
+│  ├── ตำแหน่ง / แผนก                                              │
+│  ├── ทักษะ (DTG, ปัก, QC, ออกแบบ)                                │
+│  └── ประวัติการทำงาน                                             │
+│                                                                  │
+│  📅 Shift/Schedule:                                              │
+│  ├── กำหนดกะทำงาน (เช้า/บ่าย/คืน)                                │
+│  ├── ตารางงานรายสัปดาห์/เดือน                                    │
+│  ├── ลงเวลาเข้า-ออก (Check-in/out)                               │
+│  └── ขอลา / OT                                                   │
+│                                                                  │
+│  📊 Performance:                                                 │
+│  ├── จำนวนงานที่ทำได้ต่อวัน                                       │
+│  ├── อัตราความผิดพลาด (Error Rate)                               │
+│  ├── ค่าแรงต่องาน (สำหรับคิดต้นทุน)                               │
+│  └── รายงานประสิทธิภาพ                                           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ✅ 21. QC Checklists & Standards
+
+> **ปัญหา:** QC แต่ละคนมาตรฐานไม่เท่ากัน
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              QC CHECKLISTS                                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📋 Checklist Templates by Work Type:                            │
+│                                                                  │
+│  🖨️ DTG Checklist:                                               │
+│  ├── ☐ ตำแหน่งลายตรงตาม Mockup                                   │
+│  ├── ☐ สีถูกต้อง ไม่ซีดจาง                                       │
+│  ├── ☐ ไม่มีรอยหมึกเลอะ                                          │
+│  ├── ☐ Pretreat ไม่มีคราบ                                        │
+│  ├── ☐ ไม่มีเส้นขาด/ลายแตก                                       │
+│  └── ☐ Curing เรียบร้อย                                          │
+│                                                                  │
+│  🧵 Embroidery Checklist:                                        │
+│  ├── ☐ ตำแหน่งถูกต้อง                                            │
+│  ├── ☐ สีด้ายตรงตามที่กำหนด                                      │
+│  ├── ☐ ไม่มีด้ายหลุด/พัน                                         │
+│  ├── ☐ ความหนาแน่นถูกต้อง                                        │
+│  └── ☐ ด้านหลังเรียบร้อย                                         │
+│                                                                  │
+│  📸 Photo Evidence:                                              │
+│  ├── ถ่ายรูปทุกจุดที่ตรวจ                                         │
+│  ├── บันทึกรูป Defect (ถ้ามี)                                     │
+│  └── เก็บเป็น Evidence                                           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⭐ 22. Supplier Rating System
+
+> **ปัญหา:** ไม่รู้ว่า Supplier ไหนดี/ไม่ดี
+
+### Features
+```
+Supplier: ร้านเสื้อเปล่า ABC
+
+📊 Overall Rating: ⭐⭐⭐⭐ (4.2/5)
+
+┌─────────────────────────────────────────────────────────────────┐
+│  Criteria              Score    Notes                           │
+├─────────────────────────────────────────────────────────────────┤
+│  🚚 On-time Delivery    4.5     ส่งตรงเวลา 95%                  │
+│  📦 Quality             4.0     เคยมีของเสีย 2 ครั้ง             │
+│  💰 Price               4.3     ราคาแข่งขันได้                   │
+│  💬 Communication       4.0     ตอบช้าบางครั้ง                   │
+│  🔄 Return Policy       4.2     รับคืนได้ใน 7 วัน                │
+└─────────────────────────────────────────────────────────────────┘
+
+📜 History:
+├── PO-001: ✅ 100/100 ตัว สมบูรณ์
+├── PO-002: ⚠️ 98/100 ตัว (2 ตัวชำรุด → เคลมสำเร็จ)
+└── PO-003: ✅ 200/200 ตัว สมบูรณ์
+```
+
+---
+
+## 📆 23. Calendar & Deadline Management
+
+> **ปัญหา:** ลืม Deadline บ่อย
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           📆 DECEMBER 2024                                       │
+├─────────────────────────────────────────────────────────────────┤
+│  Mon   Tue   Wed   Thu   Fri   Sat   Sun                        │
+│  16    17    18    19    20    21    22                         │
+│  ┌─────────────────────────────────────────────────┐            │
+│  │ 🔴 ORD-1234 Due                                 │ ← 20 ธ.ค.  │
+│  │ 🟡 ORD-1235 Mockup Deadline                     │            │
+│  │ 🟢 PO-001 วัตถุดิบมาถึง                          │            │
+│  └─────────────────────────────────────────────────┘            │
+│                                                                  │
+│  📅 Upcoming:                                                    │
+│  ├── วันนี้: 3 orders ถึง deadline                              │
+│  ├── พรุ่งนี้: 2 mockups รอ approve                              │
+│  └── สัปดาห์นี้: 12 orders ต้องส่ง                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📧 24. Email/Message Templates
+
+> **ปัญหา:** ต้องพิมพ์ข้อความเองทุกครั้ง
+
+### Templates
+```
+📋 Template Library:
+
+1️⃣ ยืนยันรับออเดอร์
+"สวัสดีค่ะ คุณ{{customer_name}}
+รับออเดอร์ #{{order_number}} เรียบร้อยแล้วค่ะ
+รายการ: {{items_summary}}
+ยอดรวม: {{total_amount}} บาท
+กำหนดส่ง: {{due_date}}
+ดูรายละเอียด: {{order_link}}"
+
+2️⃣ ส่ง Mockup
+"Mockup พร้อมให้ตรวจสอบแล้วค่ะ
+กรุณาตรวจสอบและอนุมัติภายใน 2 วัน
+ดู Mockup: {{mockup_link}}"
+
+3️⃣ แจ้งเตือนชำระเงิน
+"แจ้งเตือน: ยอดค้างชำระ {{amount}} บาท
+ออเดอร์: #{{order_number}}
+กรุณาชำระภายใน {{due_date}}
+ชำระเงิน: {{payment_link}}"
+
+4️⃣ แจ้งจัดส่ง
+"ส่งของแล้วค่ะ 📦
+Tracking: {{tracking_number}}
+ขนส่ง: {{carrier}}
+ติดตามพัสดุ: {{tracking_link}}"
+
+✨ Variables: {{customer_name}}, {{order_number}}, {{amount}}, etc.
+```
+
+---
+
+## 🎫 25. Promotions & Discounts
+
+> **ปัญหา:** จัดโปรไม่มีที่บันทึก ลืมว่าใครได้ส่วนลดอะไร
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              PROMOTIONS                                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  🏷️ Active Promotions:                                          │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 🎄 XMAS2024 - ส่วนลดปีใหม่                               │    │
+│  │ ├── ลด 10% สำหรับทุกออเดอร์                              │    │
+│  │ ├── ขั้นต่ำ: 5,000 บาท                                  │    │
+│  │ ├── Valid: 15-31 ธ.ค. 2024                              │    │
+│  │ ├── Used: 23 ครั้ง                                       │    │
+│  │ └── Status: 🟢 Active                                    │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 👑 VIP-GOLD - ส่วนลดลูกค้า VIP                          │    │
+│  │ ├── ลด 15% ตลอดทั้งปี                                   │    │
+│  │ ├── สำหรับ: Tier Gold ขึ้นไป                            │    │
+│  │ └── Status: 🟢 Always Active                            │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  📊 Promotion Types:                                             │
+│  ├── Percentage Discount (%)                                    │
+│  ├── Fixed Amount (฿)                                           │
+│  ├── Free Item                                                  │
+│  ├── Free Shipping                                              │
+│  └── Bundle Discount                                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 26. Material Yield Tracking
+
+> **ปัญหา:** ไม่รู้ว่าวัตถุดิบใช้ไปเท่าไหร่ เหลือเท่าไหร่
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           MATERIAL YIELD                                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  🖨️ Ink Usage (DTG):                                            │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Today: 245 CC                                           │    │
+│  │ This Week: 1,420 CC                                     │    │
+│  │ Avg per job: 3.2 CC                                     │    │
+│  │ Stock: 2,500 CC (~ 780 jobs remaining)                  │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  🧵 Thread Usage (Embroidery):                                   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ สีแดง: 450m used / 2,000m stock                         │    │
+│  │ สีน้ำเงิน: 320m used / 1,500m stock                     │    │
+│  │ สีขาว: 890m used / 3,000m stock                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  📈 Waste Tracking:                                              │
+│  ├── Ink Waste: 5% (target: < 3%)                               │
+│  ├── Pretreat Waste: 8% (target: < 5%)                          │
+│  └── Fabric Defects: 2%                                         │
+│                                                                  │
+│  💡 Auto-reorder Alert when stock < threshold                   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔗 27. API & Integrations
+
+> **ปัญหา:** ต้อง Export ไป Excel แล้ว Import เข้าโปรแกรมบัญชี
+
+### Integrations
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           INTEGRATIONS                                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  💰 Accounting:                                                  │
+│  ├── 🟢 PEAK (เชื่อมต่อแล้ว)                                    │
+│  ├── ⚪ FlowAccount                                              │
+│  └── ⚪ Express Accounting                                       │
+│                                                                  │
+│  🚚 Shipping:                                                    │
+│  ├── 🟢 Kerry Express API                                       │
+│  ├── 🟢 Flash Express API                                       │
+│  └── ⚪ J&T Express                                              │
+│                                                                  │
+│  💬 Communication:                                               │
+│  ├── 🟢 LINE Messaging API                                      │
+│  ├── ⚪ Email (SMTP/SendGrid)                                    │
+│  └── ⚪ SMS Gateway                                              │
+│                                                                  │
+│  💳 Payment:                                                     │
+│  ├── ⚪ PromptPay QR                                             │
+│  ├── ⚪ Credit Card (Omise/2C2P)                                 │
+│  └── ⚪ Bank Transfer Verification                               │
+│                                                                  │
+│  📊 Open API:                                                    │
+│  └── REST API สำหรับระบบภายนอก                                   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 💬 28. Internal Chat / Notes
+
+> **ปัญหา:** ใช้ LINE คุยงาน หาประวัติยาก
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  📝 Order #1234 - Internal Notes                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 👤 สมชาย (Designer) - 18 ธ.ค. 14:30                     │    │
+│  │ "ลูกค้าโทรมาขอเปลี่ยนสีตัวหนังสือจากดำเป็นน้ำเงินเข้ม     │    │
+│  │  ไม่คิดค่าแก้ไขเพิ่มเพราะยังไม่เริ่มทำ"                     │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 👤 สมศรี (Sales) - 18 ธ.ค. 10:15                        │    │
+│  │ "ลูกค้ารายนี้เป็น VIP เคยสั่ง 10 ครั้ง ดูแลดีๆ นะ"         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 👤 สมหมาย (Production) - 17 ธ.ค. 16:00                  │    │
+│  │ "@สมชาย ไฟล์ตัวนี้ขนาดเล็กไป ขอความละเอียด 300dpi ขึ้นไป" │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ─────────────────────────────────────────────────────────────  │
+│  [พิมพ์ข้อความ... @mention ได้]           [📎] [📷] [ส่ง]     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📤 29. Data Export & Backup
+
+> **ปัญหา:** ต้อง Export ข้อมูลไปใช้งานอื่น
+
+### Features
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           DATA EXPORT                                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  📊 Export Options:                                              │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Orders                                                  │    │
+│  │ ├── Filter: Date Range, Status, Customer               │    │
+│  │ ├── Format: [Excel] [CSV] [PDF]                        │    │
+│  │ └── [📥 Export]                                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Financial Reports                                       │    │
+│  │ ├── รายได้/ค่าใช้จ่าย ประจำเดือน                          │    │
+│  │ ├── สำหรับนำเข้าโปรแกรมบัญชี                              │    │
+│  │ └── [📥 Export to PEAK Format]                          │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Inventory Report                                        │    │
+│  │ ├── Stock ปัจจุบันทั้งหมด                                 │    │
+│  │ ├── รายการเคลื่อนไหว                                     │    │
+│  │ └── [📥 Export]                                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  💾 Auto Backup:                                                 │
+│  ├── Daily: Database backup to Cloud                            │
+│  ├── Weekly: Full system backup                                 │
+│  └── Last backup: 18 ธ.ค. 2024 03:00                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📊 Updated Priority Summary
+
+### 🔴 Phase 1 - Core (ต้องมี)
+1. Order System ✅
+2. Design Workflow ✅
+3. Customer Order Page ✅ **(ใหม่!)**
+4. Financial Documents
+5. Addon Production Tracking
+
+### 🟠 Phase 2 - Operations
+6. Purchase Order System
+7. Production Scheduling
+8. Job Costing / Profit Analysis
+9. Shipping Integration
+10. **QC Checklists** **(ใหม่!)**
+
+### 🟡 Phase 3 - Customer & Communication
+11. Communication Log
+12. Return & Warranty
+13. **Email/Message Templates** **(ใหม่!)**
+14. **Promotions & Discounts** **(ใหม่!)**
+
+### 🟢 Phase 4 - Optimization
+15. Smart Alerts
+16. KPI Dashboard
+17. Recurring Orders / Templates
+18. Price Lists
+19. **Calendar & Deadlines** **(ใหม่!)**
+
+### 🔵 Phase 5 - Advanced
+20. Machine Management
+21. Mobile App (Production)
+22. Barcode/QR System
+23. Sample Management
+24. File Management
+25. **Employee & Shift** **(ใหม่!)**
+26. **Supplier Rating** **(ใหม่!)**
+27. **Material Yield** **(ใหม่!)**
+28. **API & Integrations** **(ใหม่!)**
+29. **Internal Chat/Notes** **(ใหม่!)**
+30. **Data Export & Backup** **(ใหม่!)**
+
+## 📊 Estimated Timeline
+
+| Phase | Duration | Features |
+|-------|----------|----------|
+| Phase 1 | 4-6 weeks | Order + Design + Addon + Docs |
+| Phase 2 | 3-4 weeks | PO + Scheduling + Costing + Shipping |
+| Phase 3 | 2-3 weeks | Portal + Communication + Returns |
+| Phase 4 | 2-3 weeks | Alerts + Dashboard + Templates |
+| Phase 5 | 4-6 weeks | Advanced features |
+
+**Total: ~4-5 months** for complete ERP
+
+---
+
+*Document Updated: December 2024*
+

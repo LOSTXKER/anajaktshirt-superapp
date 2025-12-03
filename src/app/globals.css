@@ -1,0 +1,349 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-sf-pro);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-sf-pro);
+  
+  /* Apple-inspired Blue Color Palette */
+  --color-primary: #007AFF;
+  --color-primary-foreground: #ffffff;
+  --color-primary-50: #F0F7FF;
+  --color-primary-100: #E0EFFF;
+  --color-primary-200: #B8DBFF;
+  --color-primary-300: #85C1FF;
+  --color-primary-400: #4DA3FF;
+  --color-primary-500: #007AFF;
+  --color-primary-600: #0066DB;
+  --color-primary-700: #0052B3;
+  --color-primary-800: #003D8A;
+  --color-primary-900: #002966;
+  
+  /* Accent - Apple Teal */
+  --color-accent: #5AC8FA;
+  --color-accent-foreground: #ffffff;
+  
+  /* Success - Apple Green */
+  --color-success: #34C759;
+  --color-success-foreground: #ffffff;
+  
+  /* Warning - Apple Orange */
+  --color-warning: #FF9500;
+  --color-warning-foreground: #ffffff;
+  
+  /* Danger - Apple Red */
+  --color-danger: #FF3B30;
+  --color-danger-foreground: #ffffff;
+  
+  /* Apple Neutral Palette */
+  --color-background: #F5F5F7;
+  --color-foreground: #1D1D1F;
+  --color-muted: #86868B;
+  --color-muted-foreground: #A1A1A6;
+  --color-border: #D2D2D7;
+  --color-ring: #007AFF;
+  
+  /* Card */
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1D1D1F;
+  
+  /* Sidebar - Apple Dark */
+  --color-sidebar-bg: #1D1D1F;
+  --color-sidebar-foreground: #F5F5F7;
+  --color-sidebar-muted: #86868B;
+  --color-sidebar-border: #38383D;
+  --color-sidebar-accent: #007AFF;
+}
+
+/* Base Layer */
+@layer base {
+  * {
+    @apply border-[var(--color-border)];
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body {
+    @apply bg-[var(--color-background)] text-[var(--color-foreground)] antialiased;
+    font-feature-settings: "kern" 1, "liga" 1;
+    letter-spacing: -0.01em;
+  }
+  
+  /* Apple-style Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#D2D2D7] rounded-full;
+    transition: background 0.2s;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-[#A1A1A6];
+  }
+  
+  /* Focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-[var(--color-ring)]/40 ring-offset-2 ring-offset-[var(--color-background)];
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-[var(--color-primary)]/20 text-[var(--color-foreground)];
+  }
+}
+
+/* Component Classes */
+@layer components {
+  /* Apple Glass Effect */
+  .apple-glass {
+    @apply bg-white/80 backdrop-blur-xl backdrop-saturate-150;
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  }
+  
+  .apple-glass-dark {
+    @apply bg-[#1D1D1F]/80 backdrop-blur-xl backdrop-saturate-150;
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  }
+
+  /* Apple Card */
+  .apple-card {
+    @apply bg-white rounded-2xl;
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.04),
+      0 1px 2px rgba(0, 0, 0, 0.04),
+      0 4px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .apple-card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .apple-card-hover:hover {
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.04),
+      0 4px 8px rgba(0, 0, 0, 0.06),
+      0 12px 24px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+
+  /* Apple Button Base */
+  .apple-button {
+    @apply inline-flex items-center justify-center font-medium rounded-xl;
+    @apply transition-all duration-200 ease-out;
+    @apply active:scale-[0.98];
+  }
+
+  /* Apple Input */
+  .apple-input {
+    @apply w-full rounded-xl bg-[#F5F5F7] border-0;
+    @apply text-[#1D1D1F] placeholder:text-[#86868B];
+    @apply transition-all duration-200;
+    @apply focus:bg-white focus:ring-2 focus:ring-[#007AFF]/30;
+  }
+
+  /* Apple Select */
+  .apple-select {
+    @apply w-full rounded-xl bg-[#F5F5F7] border-0;
+    @apply text-[#1D1D1F];
+    @apply transition-all duration-200;
+    @apply focus:bg-white focus:ring-2 focus:ring-[#007AFF]/30;
+  }
+
+  /* Skeleton Loader */
+  .skeleton {
+    @apply bg-[#E8E8ED] rounded-lg animate-pulse;
+  }
+  
+  /* Apple Divider */
+  .apple-divider {
+    @apply h-px bg-[#D2D2D7]/60;
+  }
+
+  /* Stats Card Styles */
+  .stats-blue {
+    background: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
+  }
+  
+  .stats-green {
+    background: linear-gradient(135deg, #34C759 0%, #30D158 100%);
+  }
+  
+  .stats-orange {
+    background: linear-gradient(135deg, #FF9500 0%, #FFCC00 100%);
+  }
+  
+  .stats-red {
+    background: linear-gradient(135deg, #FF3B30 0%, #FF6961 100%);
+  }
+  
+  .stats-purple {
+    background: linear-gradient(135deg, #AF52DE 0%, #BF5AF2 100%);
+  }
+
+  /* Table Styles */
+  .apple-table {
+    @apply w-full text-sm;
+  }
+  
+  .apple-table thead {
+    @apply bg-[#F5F5F7];
+  }
+  
+  .apple-table th {
+    @apply px-4 py-3 text-left font-semibold text-[#86868B] text-xs uppercase tracking-wider;
+  }
+  
+  .apple-table tbody tr {
+    @apply border-b border-[#F5F5F7] transition-colors duration-150;
+  }
+  
+  .apple-table tbody tr:hover {
+    @apply bg-[#F5F5F7]/50;
+  }
+  
+  .apple-table td {
+    @apply px-4 py-4 text-[#1D1D1F];
+  }
+
+  /* Apple Navigation Item */
+  .apple-nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl;
+    @apply text-[#86868B] font-medium;
+    @apply transition-all duration-200;
+    @apply hover:bg-white/10 hover:text-white;
+  }
+
+  .apple-nav-item-active {
+    @apply bg-[#007AFF]/15 text-[#007AFF];
+    @apply hover:bg-[#007AFF]/20 hover:text-[#007AFF];
+  }
+}
+
+/* Utility Classes */
+@layer utilities {
+  /* Text Gradient */
+  .text-gradient-blue {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
+  }
+
+  /* Apple-style subtle shadow */
+  .apple-shadow-sm {
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.03),
+      0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .apple-shadow {
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.04),
+      0 2px 4px rgba(0, 0, 0, 0.04),
+      0 8px 16px rgba(0, 0, 0, 0.04);
+  }
+
+  .apple-shadow-lg {
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.04),
+      0 4px 8px rgba(0, 0, 0, 0.06),
+      0 16px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Backdrop blur variations */
+  .backdrop-blur-apple {
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  }
+
+  /* Apple Ambient Background */
+  .bg-ambient {
+    background-image: 
+      radial-gradient(ellipse at 30% 0%, rgba(0, 122, 255, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 100%, rgba(90, 200, 250, 0.06) 0%, transparent 50%);
+  }
+
+  /* Grid Background */
+  .bg-grid-subtle {
+    background-image: 
+      linear-gradient(rgba(0, 0, 0, 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.015) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Stagger Animation Helper */
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
+}
+
+/* Keyframe Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Animation Classes */
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
