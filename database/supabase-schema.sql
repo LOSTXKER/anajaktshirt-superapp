@@ -637,7 +637,8 @@ INSERT INTO work_types (code, name, category, base_price, requires_design, defau
 ('sewing', 'เย็บประกอบ', 'garment', 80, false, 'outsource', 5),
 ('labeling', 'ติดป้าย/แท็ก', 'labeling', 5, false, 'in_house', 1),
 ('folding', 'พับเสื้อ', 'finishing', 3, false, 'in_house', 1),
-('packing', 'บรรจุถุง', 'packaging', 5, false, 'in_house', 1);
+('packing', 'บรรจุถุง', 'packaging', 5, false, 'in_house', 1)
+ON CONFLICT (code) DO NOTHING;
 
 -- Insert default order types
 INSERT INTO order_types (code, name, description, lead_time_min, lead_time_max, features_included, features_excluded, workflow_steps) VALUES
@@ -656,14 +657,16 @@ INSERT INTO order_types (code, name, description, lead_time_min, lead_time_max, 
 ('print_only', 'รับสกรีนอย่างเดียว', 'ลูกค้านำเสื้อมาเอง + สกรีน/ปัก', 1, 3, 
   ARRAY['ลูกค้านำเสื้อมา', 'สกรีน/ปัก', 'ออกแบบลาย'], 
   ARRAY['ตัดเย็บ'],
-  ARRAY['รับเสื้อ', 'กำหนดงานสกรีน', 'อนุมัติ Design', 'ผลิต', 'QC', 'ส่งมอบ']);
+  ARRAY['รับเสื้อ', 'กำหนดงานสกรีน', 'อนุมัติ Design', 'ผลิต', 'QC', 'ส่งมอบ'])
+ON CONFLICT (code) DO NOTHING;
 
 -- Insert default production stations
 INSERT INTO production_stations (name, code, work_type_codes, capacity_per_day) VALUES
 ('สถานี DTF 1', 'DTF-01', ARRAY['dtf_printing'], 200),
 ('สถานี DTF 2', 'DTF-02', ARRAY['dtf_printing'], 200),
 ('สถานี QC', 'QC-01', ARRAY['qc'], 500),
-('สถานี แพ็ค', 'PACK-01', ARRAY['folding', 'packing', 'labeling'], 300);
+('สถานี แพ็ค', 'PACK-01', ARRAY['folding', 'packing', 'labeling'], 300)
+ON CONFLICT (code) DO NOTHING;
 
 COMMENT ON SCHEMA public IS 'Anajak Superapp ERP Schema v2.0';
 
