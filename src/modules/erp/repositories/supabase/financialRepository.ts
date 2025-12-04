@@ -175,7 +175,7 @@ export class SupabaseFinancialRepository {
   ): Promise<{ data: Quotation[]; totalCount: number }> {
     let query = this.supabase
       .from('quotations')
-      .select(`*, customer:customers(*), order:orders(*)`, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     if (filters?.status) {
       query = query.eq('status', filters.status);
@@ -202,8 +202,18 @@ export class SupabaseFinancialRepository {
       return { data: [], totalCount: 0 };
     }
 
+    // Fetch customers separately
+    const customerIds = [...new Set((data || []).map(q => q.customer_id).filter(Boolean))];
+    const customersMap = await this.fetchCustomers(customerIds);
+
+    // Enrich quotations with customer data
+    const enrichedQuotations = (data || []).map(q => ({
+      ...q,
+      customer: q.customer_id ? customersMap[q.customer_id] : null,
+    }));
+
     return {
-      data: (data || []).map(dbToQuotation),
+      data: enrichedQuotations.map(dbToQuotation),
       totalCount: count || 0,
     };
   }
@@ -211,23 +221,29 @@ export class SupabaseFinancialRepository {
   async getQuotationById(id: string): Promise<Quotation | null> {
     const { data, error } = await this.supabase
       .from('quotations')
-      .select(`*, customer:customers(*), order:orders(*)`)
+      .select('*')
       .eq('id', id)
       .single();
 
     if (error || !data) return null;
-    return dbToQuotation(data);
+
+    // Fetch customer separately
+    const customer = await this.fetchCustomer(data.customer_id);
+    return dbToQuotation({ ...data, customer });
   }
 
   async createQuotation(quotation: Omit<Quotation, 'id' | 'created_at' | 'updated_at'>): Promise<Quotation> {
     const { data, error } = await this.supabase
       .from('quotations')
       .insert(quotation)
-      .select(`*, customer:customers(*), order:orders(*)`)
+      .select('*')
       .single();
 
     if (error) throw new Error(error.message);
-    return dbToQuotation(data);
+
+    // Fetch customer separately
+    const customer = await this.fetchCustomer(data.customer_id);
+    return dbToQuotation({ ...data, customer });
   }
 
   async updateQuotation(id: string, updates: Partial<Quotation>): Promise<Quotation> {
@@ -235,11 +251,14 @@ export class SupabaseFinancialRepository {
       .from('quotations')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select(`*, customer:customers(*), order:orders(*)`)
+      .select('*')
       .single();
 
     if (error) throw new Error(error.message);
-    return dbToQuotation(data);
+
+    // Fetch customer separately
+    const customer = await this.fetchCustomer(data.customer_id);
+    return dbToQuotation({ ...data, customer });
   }
 
   // ==================== INVOICES ====================
@@ -250,7 +269,7 @@ export class SupabaseFinancialRepository {
   ): Promise<{ data: Invoice[]; totalCount: number }> {
     let query = this.supabase
       .from('invoices')
-      .select(`*, customer:customers(*), order:orders(*)`, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     if (filters?.status) {
       query = query.eq('status', filters.status);
@@ -280,8 +299,18 @@ export class SupabaseFinancialRepository {
       return { data: [], totalCount: 0 };
     }
 
+    // Fetch customers separately
+    const customerIds = [...new Set((data || []).map(inv => inv.customer_id).filter(Boolean))];
+    const customersMap = await this.fetchCustomers(customerIds);
+
+    // Enrich invoices with customer data
+    const enrichedInvoices = (data || []).map(inv => ({
+      ...inv,
+      customer: inv.customer_id ? customersMap[inv.customer_id] : null,
+    }));
+
     return {
-      data: (data || []).map(dbToInvoice),
+      data: enrichedInvoices.map(dbToInvoice),
       totalCount: count || 0,
     };
   }
@@ -289,23 +318,29 @@ export class SupabaseFinancialRepository {
   async getInvoiceById(id: string): Promise<Invoice | null> {
     const { data, error } = await this.supabase
       .from('invoices')
-      .select(`*, customer:customers(*), order:orders(*)`)
+      .select('*')
       .eq('id', id)
       .single();
 
     if (error || !data) return null;
-    return dbToInvoice(data);
+
+    // Fetch customer separately
+    const customer = await this.fetchCustomer(data.customer_id);
+    return dbToInvoice({ ...data, customer });
   }
 
   async createInvoice(invoice: Omit<Invoice, 'id' | 'created_at' | 'updated_at'>): Promise<Invoice> {
     const { data, error } = await this.supabase
       .from('invoices')
       .insert(invoice)
-      .select(`*, customer:customers(*), order:orders(*)`)
+      .select('*')
       .single();
 
     if (error) throw new Error(error.message);
-    return dbToInvoice(data);
+
+    // Fetch customer separately
+    const customer = await this.fetchCustomer(data.customer_id);
+    return dbToInvoice({ ...data, customer });
   }
 
   async updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice> {
@@ -313,11 +348,14 @@ export class SupabaseFinancialRepository {
       .from('invoices')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select(`*, customer:customers(*), order:orders(*)`)
+      .select('*')
       .single();
 
     if (error) throw new Error(error.message);
-    return dbToInvoice(data);
+
+    // Fetch customer separately
+    const customer = await this.fetchCustomer(data.customer_id);
+    return dbToInvoice({ ...data, customer });
   }
 
   // ==================== RECEIPTS ====================
