@@ -93,18 +93,27 @@ END $$;
 -- ==================== CORE TABLES ====================
 
 -- Customers
-CREATE TABLE IF NOT EXISTS customers (
+DROP TABLE IF EXISTS customers CASCADE;
+CREATE TABLE customers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(50) UNIQUE NOT NULL,
+  type VARCHAR(50) NOT NULL DEFAULT 'individual', -- individual, company, retail
   name VARCHAR(255) NOT NULL,
   company_name VARCHAR(255),
+  contact_name VARCHAR(255),
   phone VARCHAR(50),
+  mobile VARCHAR(50),
   email VARCHAR(255),
   line_id VARCHAR(100),
+  tax_id VARCHAR(50),
   tier customer_tier DEFAULT 'bronze',
+  status VARCHAR(50) DEFAULT 'active', -- active, inactive, suspended
+  payment_terms payment_terms DEFAULT 'full',
+  credit_limit DECIMAL(12,2) DEFAULT 0,
   total_orders INTEGER DEFAULT 0,
   total_spent DECIMAL(12,2) DEFAULT 0,
+  default_address JSONB,
   notes TEXT,
-  address JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -271,14 +280,23 @@ CREATE TABLE IF NOT EXISTS production_jobs (
 -- ==================== SUPPLIER TABLES ====================
 
 -- Suppliers
-CREATE TABLE IF NOT EXISTS suppliers (
+DROP TABLE IF EXISTS suppliers CASCADE;
+CREATE TABLE suppliers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(50) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
+  name_th VARCHAR(255),
   contact_name VARCHAR(255),
-  phone VARCHAR(50),
-  email VARCHAR(255),
-  address TEXT,
+  contact_phone VARCHAR(50),
+  contact_email VARCHAR(255),
+  contact_line VARCHAR(100),
+  address JSONB,
+  status VARCHAR(50) DEFAULT 'active',
   service_types TEXT[] DEFAULT '{}',
+  payment_terms VARCHAR(50),
+  credit_limit DECIMAL(12,2) DEFAULT 0,
+  lead_time_days INTEGER DEFAULT 7,
+  min_order_amount DECIMAL(12,2) DEFAULT 0,
   rating DECIMAL(3,2) DEFAULT 0,
   is_active BOOLEAN DEFAULT TRUE,
   notes TEXT,
@@ -448,23 +466,27 @@ CREATE TABLE IF NOT EXISTS order_types (
 );
 
 -- Products (เสื้อเปล่า) - Extended for Stock Module
-CREATE TABLE IF NOT EXISTS products (
+DROP TABLE IF EXISTS products CASCADE;
+CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  main_sku VARCHAR(50),             -- SKU หลัก (รหัสสินค้าหลัก)
-  sku VARCHAR(50) UNIQUE NOT NULL,  -- SKU รอง (รหัสเฉพาะ variant)
-  name VARCHAR(255),
-  model VARCHAR(100) NOT NULL,      -- รุ่นเสื้อ
+  code VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  name_th VARCHAR(255),
   category VARCHAR(100),
-  color VARCHAR(50) NOT NULL,       -- ชื่อสี
-  color_hex VARCHAR(10),            -- Hex code สำหรับแสดงผล
-  size VARCHAR(20) NOT NULL,        -- ไซส์
-  cost DECIMAL(10,2) DEFAULT 0,     -- ต้นทุนต่อหน่วย
-  price DECIMAL(10,2) DEFAULT 0,    -- ราคาขายต่อหน่วย (base_price)
-  quantity INTEGER DEFAULT 0,       -- จำนวนคงเหลือ (stock_qty)
-  min_level INTEGER DEFAULT 10,     -- จุดสั่งซื้อ (Reorder Point)
+  type VARCHAR(50), -- blank, custom, etc.
+  brand VARCHAR(100),
+  model VARCHAR(100),
+  description TEXT,
+  base_price DECIMAL(10,2) DEFAULT 0,
+  sale_price DECIMAL(10,2) DEFAULT 0,
+  cost_price DECIMAL(10,2) DEFAULT 0,
+  colors TEXT[], -- Available colors
+  sizes TEXT[], -- Available sizes
+  min_qty INTEGER DEFAULT 1,
   is_active BOOLEAN DEFAULT TRUE,
+  in_stock BOOLEAN DEFAULT TRUE,
+  stock_qty INTEGER DEFAULT 0,
   image_url TEXT,
-  deleted_at TIMESTAMPTZ,           -- Soft delete timestamp
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
