@@ -510,6 +510,34 @@ CREATE TABLE IF NOT EXISTS stock_reservations (
 
 -- ==================== USER TABLES ====================
 
+-- Roles with Permissions
+CREATE TABLE IF NOT EXISTS roles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(50) UNIQUE NOT NULL,
+  display_name VARCHAR(100) NOT NULL,
+  description TEXT,
+  permissions JSONB DEFAULT '[]',
+  is_system BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User Profiles (Extended)
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255),
+  avatar_url TEXT,
+  role_id UUID REFERENCES roles(id) ON DELETE SET NULL,
+  department VARCHAR(100),
+  phone VARCHAR(50),
+  is_active BOOLEAN DEFAULT TRUE,
+  last_login_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Legacy profiles table (for backward compatibility)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email VARCHAR(255) NOT NULL,
@@ -623,6 +651,8 @@ ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_reservations ENABLE ROW LEVEL SECURITY;
@@ -644,6 +674,8 @@ DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
 DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
 DROP POLICY IF EXISTS "Allow authenticated users to view audit logs" ON audit_logs;
 DROP POLICY IF EXISTS "Allow authenticated users to insert audit logs" ON audit_logs;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON roles;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON user_profiles;
 DROP POLICY IF EXISTS "Allow all for authenticated users" ON products;
 DROP POLICY IF EXISTS "Allow all for authenticated users" ON transactions;
 DROP POLICY IF EXISTS "Allow all for authenticated users" ON stock_reservations;
@@ -662,6 +694,8 @@ CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USI
 CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Allow authenticated users to view audit logs" ON audit_logs FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users to insert audit logs" ON audit_logs FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow all for authenticated users" ON roles FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow all for authenticated users" ON user_profiles FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON products FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON transactions FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON stock_reservations FOR ALL USING (auth.role() = 'authenticated');
@@ -701,6 +735,7 @@ CREATE TRIGGER tr_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXE
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- Create legacy profile
   INSERT INTO public.profiles (id, email, full_name, avatar_url)
   VALUES (
     NEW.id,
@@ -708,6 +743,19 @@ BEGIN
     NEW.raw_user_meta_data->>'full_name',
     NEW.raw_user_meta_data->>'avatar_url'
   );
+  
+  -- Create user_profile with default role
+  INSERT INTO public.user_profiles (id, email, full_name, avatar_url, role_id)
+  SELECT 
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'avatar_url',
+    r.id
+  FROM public.roles r
+  WHERE r.name = 'staff'
+  LIMIT 1;
+  
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -760,6 +808,18 @@ INSERT INTO production_stations (name, code, work_type_codes, capacity_per_day) 
 ('สถานี QC', 'QC-01', ARRAY['qc'], 500),
 ('สถานี แพ็ค', 'PACK-01', ARRAY['folding', 'packing', 'labeling'], 300)
 ON CONFLICT (code) DO NOTHING;
+
+-- Insert default roles
+INSERT INTO roles (name, display_name, description, permissions, is_system) VALUES
+('super_admin', 'Super Admin', 'ผู้ดูแลระบบสูงสุด - มีสิทธิ์ทุกอย่าง', '["*"]', true),
+('admin', 'Admin', 'ผู้ดูแลระบบ - จัดการผู้ใช้และตั้งค่าระบบ', '["orders:*", "production:*", "stock:*", "suppliers:*", "customers:*", "reports:view", "settings:view"]', true),
+('manager', 'Manager', 'ผู้จัดการ - ดูรายงานและอนุมัติ', '["orders:*", "production:view", "stock:view", "suppliers:view", "customers:view", "reports:*"]', true),
+('sales', 'Sales', 'พนักงานขาย - จัดการออเดอร์และลูกค้า', '["orders:*", "customers:*", "stock:view"]', true),
+('production', 'Production', 'พนักงานผลิต - จัดการงานผลิต', '["production:*", "stock:view", "orders:view"]', true),
+('warehouse', 'Warehouse', 'พนักงานคลัง - จัดการสต๊อก', '["stock:*", "orders:view"]', true),
+('designer', 'Designer', 'นักออกแบบ - จัดการงาน Design', '["orders:view", "orders:design"]', true),
+('staff', 'Staff', 'พนักงานทั่วไป - ดูข้อมูลพื้นฐาน', '["orders:view", "stock:view"]', false)
+ON CONFLICT (name) DO NOTHING;
 
 COMMENT ON SCHEMA public IS 'Anajak Superapp ERP Schema v2.0';
 
