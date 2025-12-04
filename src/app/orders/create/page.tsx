@@ -451,25 +451,95 @@ export default function CreateOrderPage() {
         {/* Step 1: Order Type & Customer */}
         {currentStep === 1 && (
           <div className="space-y-6">
-            {/* Order Type Selection */}
+            {/* Order Type Selection - Production Mode */}
             <Card className="p-6 apple-card">
-              <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">ประเภทงาน</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {orderTypes.map((type) => (
-                  <button
-                    key={type.code}
-                    onClick={() => setFormData(prev => ({ ...prev, order_type_code: type.code }))}
-                    className={`p-4 rounded-2xl border-2 transition-all text-left ${
-                      formData.order_type_code === type.code
-                        ? 'border-[#007AFF] bg-[#007AFF]/5'
-                        : 'border-[#E8E8ED] hover:border-[#007AFF]/50'
-                    }`}
-                  >
-                    <div className="text-sm font-semibold text-[#1D1D1F]">{type.name_th}</div>
-                    <div className="text-xs text-[#86868B] mt-1">{type.description}</div>
-                  </button>
-                ))}
+              <h2 className="text-lg font-semibold text-[#1D1D1F] mb-2">รูปแบบการผลิต</h2>
+              <p className="text-sm text-[#86868B] mb-4">เลือกรูปแบบตามวัตถุประสงค์ของออเดอร์</p>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                {orderTypes.map((type) => {
+                  const isSelected = formData.order_type_code === type.code;
+                  const IconComponent = type.icon === 'shirt' ? Package :
+                                        type.icon === 'scissors' ? Palette :
+                                        type.icon === 'palette' ? Palette :
+                                        type.icon === 'printer' ? FileText : Package;
+                  
+                  return (
+                    <button
+                      key={type.code}
+                      onClick={() => setFormData(prev => ({ ...prev, order_type_code: type.code }))}
+                      className={`p-5 rounded-2xl border-2 transition-all text-left ${
+                        isSelected
+                          ? 'border-[#007AFF] bg-[#007AFF]/5 ring-2 ring-[#007AFF]/20'
+                          : 'border-[#E8E8ED] hover:border-[#007AFF]/50 hover:bg-[#F5F5F7]'
+                      }`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          isSelected ? 'bg-[#007AFF] text-white' : 'bg-[#F5F5F7] text-[#86868B]'
+                        }`}>
+                          <IconComponent className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="font-semibold text-[#1D1D1F]">{type.name_th}</div>
+                            {type.lead_days_min && type.lead_days_max && (
+                              <div className="text-xs text-[#86868B] bg-[#F5F5F7] px-2 py-0.5 rounded-full">
+                                ⏱️ {type.lead_days_min}-{type.lead_days_max} วัน
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-sm text-[#86868B] mt-0.5">{type.description}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Features */}
+                      {type.features && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {type.features.map((feature, idx) => (
+                            <span
+                              key={idx}
+                              className={`text-xs px-2 py-0.5 rounded-full ${
+                                feature.available
+                                  ? 'bg-[#34C759]/10 text-[#34C759]'
+                                  : 'bg-[#E8E8ED] text-[#86868B] line-through'
+                              }`}
+                            >
+                              {feature.available ? '✓' : '✗'} {feature.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Workflow Preview (shown when selected) */}
+                      {isSelected && type.workflow_steps && (
+                        <div className="mt-3 pt-3 border-t border-[#E8E8ED]">
+                          <div className="text-xs text-[#86868B] mb-2">📋 ขั้นตอนการทำงาน:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {type.workflow_steps.map((step, idx) => (
+                              <span key={idx} className="text-xs text-[#1D1D1F] flex items-center gap-1">
+                                {idx > 0 && <span className="text-[#86868B]">→</span>}
+                                <span className="bg-[#F5F5F7] px-2 py-0.5 rounded">{step}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+              
+              {/* Selected Type Full Description */}
+              {selectedOrderType?.description_full && (
+                <div className="mt-4 p-4 bg-[#007AFF]/5 rounded-xl border border-[#007AFF]/20">
+                  <div className="text-sm text-[#1D1D1F]">
+                    <span className="font-medium">ℹ️ {selectedOrderType.name_th}:</span>{' '}
+                    {selectedOrderType.description_full}
+                  </div>
+                </div>
+              )}
             </Card>
 
             {/* Customer Selection */}
@@ -481,12 +551,12 @@ export default function CreateOrderPage() {
                     <div className="w-12 h-12 bg-[#007AFF]/10 rounded-xl flex items-center justify-center">
                       <User className="w-6 h-6 text-[#007AFF]" />
           </div>
-          <div>
+        <div>
                       <div className="font-semibold text-[#1D1D1F]">{formData.customer.name}</div>
                       <div className="text-sm text-[#86868B]">
                         {formData.customer.phone} • {formData.customer.tier} member
-                      </div>
-                    </div>
+        </div>
+      </div>
                   </div>
                   <Button
                     variant="secondary"
@@ -524,21 +594,21 @@ export default function CreateOrderPage() {
                           : 'border-[#E8E8ED] hover:border-[#007AFF]/50'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
                         {priority.code === 'normal' && <Clock className="w-4 h-4 text-[#86868B]" />}
                         {priority.code === 'rush' && <Zap className="w-4 h-4 text-[#FF9500]" />}
                         {priority.code === 'urgent' && <AlertTriangle className="w-4 h-4 text-[#FF3B30]" />}
                         {priority.code === 'emergency' && <Sparkles className="w-4 h-4 text-[#AF52DE]" />}
                         <span className="text-sm font-medium">{priority.name_th}</span>
-                      </div>
+          </div>
                       {priority.surcharge_percent > 0 && (
                         <div className="text-xs text-[#FF9500] mt-1">+{priority.surcharge_percent}%</div>
                       )}
                     </button>
                   ))}
-                </div>
+        </div>
               </Card>
-
+        
               <Card className="p-6 apple-card">
                 <h2 className="text-lg font-semibold text-[#1D1D1F] mb-4">กำหนดส่ง</h2>
             <Input

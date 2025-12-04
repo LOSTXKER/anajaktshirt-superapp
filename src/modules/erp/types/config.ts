@@ -125,10 +125,15 @@ export interface PrintSize {
 }
 
 // ---------------------------------------------
-// Order Type
+// Order Type (Production Mode)
 // ---------------------------------------------
 
 export type ProductionMode = 'in_house' | 'outsource' | 'hybrid';
+
+export interface OrderTypeFeature {
+  label: string;
+  available: boolean;
+}
 
 export interface OrderType {
   id: string;
@@ -136,8 +141,17 @@ export interface OrderType {
   name: string;
   name_th: string;
   description?: string;
+  description_full?: string;
+  icon?: string; // 'shirt' | 'scissors' | 'palette' | 'printer'
   requires_products: boolean; // ต้องเลือกสินค้าจาก stock หรือไม่
+  requires_design: boolean; // ต้องมีงานออกแบบหรือไม่
+  requires_fabric: boolean; // ต้องเลือกผ้าหรือไม่
+  requires_pattern: boolean; // ต้องมี pattern หรือไม่
   default_production_mode: ProductionMode;
+  lead_days_min?: number;
+  lead_days_max?: number;
+  workflow_steps?: string[];
+  features?: OrderTypeFeature[];
   sort_order: number;
   is_active?: boolean;
 }

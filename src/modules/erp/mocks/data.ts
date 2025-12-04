@@ -394,7 +394,7 @@ export const mockPrintSizes: PrintSize[] = [
 ];
 
 // ---------------------------------------------
-// Order Types
+// Order Types (Production Modes)
 // ---------------------------------------------
 
 export const mockOrderTypes: OrderType[] = [
@@ -403,9 +403,28 @@ export const mockOrderTypes: OrderType[] = [
     code: 'ready_made',
     name: 'Ready-Made',
     name_th: 'เสื้อสำเร็จรูป + สกรีน',
-    description: 'ใช้เสื้อจาก Stock + พิมพ์/ปัก',
+    description: 'เลือกเสื้อจาก Stock แล้วสกรีน/ปัก',
+    description_full: 'เหมาะสำหรับออเดอร์ที่ต้องการใช้เสื้อสำเร็จรูปจากคลัง แล้วเพิ่มงานสกรีน/ปัก ส่งได้เร็ว',
+    icon: 'shirt',
     requires_products: true,
+    requires_design: true,
+    requires_fabric: false,
+    requires_pattern: false,
     default_production_mode: 'in_house',
+    lead_days_min: 3,
+    lead_days_max: 5,
+    workflow_steps: [
+      'เลือกเสื้อจาก Stock',
+      'กำหนดงานสกรีน/ปัก',
+      'อนุมัติ Design & Mockup',
+      'ผลิต → QC → ส่งมอบ',
+    ],
+    features: [
+      { label: 'เลือกเสื้อจาก Stock', available: true },
+      { label: 'สกรีน/ปัก', available: true },
+      { label: 'ออกแบบลาย', available: true },
+      { label: 'ตัดเย็บ', available: false },
+    ],
     sort_order: 1,
   },
   {
@@ -414,8 +433,27 @@ export const mockOrderTypes: OrderType[] = [
     name: 'Custom Sewing',
     name_th: 'ตัดเย็บตามแบบ',
     description: 'ตัดเย็บเสื้อใหม่ + สกรีน/ปัก',
+    description_full: 'เหมาะสำหรับออเดอร์ที่ต้องการตัดเย็บเสื้อใหม่ตาม Pattern ที่มีอยู่ + สกรีน/ปัก ใช้เวลามากขึ้น',
+    icon: 'scissors',
     requires_products: false,
+    requires_design: true,
+    requires_fabric: true,
+    requires_pattern: true,
     default_production_mode: 'outsource',
+    lead_days_min: 7,
+    lead_days_max: 14,
+    workflow_steps: [
+      'เลือก Pattern + ผ้า',
+      'สั่งตัดเย็บ (Outsource)',
+      'รับเสื้อ → สกรีน/ปัก',
+      'QC → ส่งมอบ',
+    ],
+    features: [
+      { label: 'เลือก Pattern', available: true },
+      { label: 'เลือกผ้า/สั่งผ้า', available: true },
+      { label: 'ตัดเย็บ (Outsource)', available: true },
+      { label: 'สกรีน/ปัก', available: true },
+    ],
     sort_order: 2,
   },
   {
@@ -423,9 +461,28 @@ export const mockOrderTypes: OrderType[] = [
     code: 'full_custom',
     name: 'Full Custom',
     name_th: 'ออกแบบ+ตัดเย็บ+สกรีน',
-    description: 'ออกแบบลาย + ตัดเย็บ + สกรีน/ปัก',
+    description: 'ออกแบบตั้งแต่ Pattern + ตัดเย็บ + สกรีน',
+    description_full: 'เหมาะสำหรับออเดอร์ที่ต้องการออกแบบ Pattern ใหม่ทั้งหมด ตัดเย็บ + สกรีน ใช้เวลามากที่สุด',
+    icon: 'palette',
     requires_products: false,
+    requires_design: true,
+    requires_fabric: true,
+    requires_pattern: false,
     default_production_mode: 'hybrid',
+    lead_days_min: 14,
+    lead_days_max: 30,
+    workflow_steps: [
+      'ออกแบบ Pattern ใหม่',
+      'อนุมัติ Pattern',
+      'เลือกผ้า + ตัดเย็บ',
+      'สกรีน/ปัก → QC → ส่งมอบ',
+    ],
+    features: [
+      { label: 'ออกแบบ Pattern', available: true },
+      { label: 'เลือกผ้า/สั่งผ้า', available: true },
+      { label: 'ตัดเย็บ (Outsource)', available: true },
+      { label: 'สกรีน/ปัก', available: true },
+    ],
     sort_order: 3,
   },
   {
@@ -434,8 +491,27 @@ export const mockOrderTypes: OrderType[] = [
     name: 'Print Only',
     name_th: 'รับสกรีนอย่างเดียว',
     description: 'ลูกค้านำเสื้อมาเอง + สกรีน/ปัก',
+    description_full: 'เหมาะสำหรับลูกค้าที่มีเสื้ออยู่แล้ว ต้องการให้สกรีน/ปักเพิ่มเติม ส่งได้เร็วที่สุด',
+    icon: 'printer',
     requires_products: false,
+    requires_design: true,
+    requires_fabric: false,
+    requires_pattern: false,
     default_production_mode: 'in_house',
+    lead_days_min: 1,
+    lead_days_max: 3,
+    workflow_steps: [
+      'รับเสื้อจากลูกค้า',
+      'กำหนดงานสกรีน/ปัก',
+      'อนุมัติ Design',
+      'ผลิต → QC → ส่งมอบ',
+    ],
+    features: [
+      { label: 'ลูกค้านำเสื้อมา', available: true },
+      { label: 'สกรีน/ปัก', available: true },
+      { label: 'ออกแบบลาย', available: true },
+      { label: 'ตัดเย็บ', available: false },
+    ],
     sort_order: 4,
   },
 ];
