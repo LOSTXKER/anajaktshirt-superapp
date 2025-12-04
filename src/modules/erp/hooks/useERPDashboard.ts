@@ -70,10 +70,11 @@ const DEFAULT_STATS: DashboardStats = {
     rework_rate: 0,
   },
   suppliers: {
-    total: 0,
-    active: 0,
-    pending_po: 0,
-    pending_amount: 0,
+    total_suppliers: 0,
+    active_suppliers: 0,
+    pending_pos: 0,
+    overdue_deliveries: 0,
+    total_outstanding: 0,
   },
   revenue: {
     today: 0,

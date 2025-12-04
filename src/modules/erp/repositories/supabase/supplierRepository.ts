@@ -323,12 +323,7 @@ export class SupabaseSupplierRepository {
 
   // ==================== STATISTICS ====================
 
-  async getSupplierStats(): Promise<{
-    total_suppliers: number;
-    active_suppliers: number;
-    pending_pos: number;
-    total_po_value: number;
-  }> {
+  async getStats(): Promise<import('../../types/suppliers').SupplierStats> {
     const { count: total_suppliers } = await this.supabase
       .from('suppliers')
       .select('*', { count: 'exact', head: true });
@@ -343,17 +338,29 @@ export class SupabaseSupplierRepository {
       .select('*', { count: 'exact', head: true })
       .in('status', ['draft', 'sent', 'confirmed']);
 
+    const now = new Date().toISOString();
+    const { count: overdue_deliveries } = await this.supabase
+      .from('purchase_orders')
+      .select('*', { count: 'exact', head: true })
+      .lt('expected_date', now)
+      .not('status', 'in', '(received,cancelled)');
+
+    // Calculate total outstanding (amount for non-cancelled, non-draft POs - maybe?)
+    // Or maybe just total amount of pending POs.
+    // Let's assume total_outstanding matches pending_amount in dashboard which usually means unpaid or pending POs value.
     const { data: poData } = await this.supabase
       .from('purchase_orders')
-      .select('total_amount');
+      .select('total_amount')
+      .in('status', ['sent', 'confirmed', 'partial']);
 
-    const total_po_value = (poData || []).reduce((sum, po) => sum + (po.total_amount || 0), 0);
+    const total_outstanding = (poData || []).reduce((sum, po) => sum + (po.total_amount || 0), 0);
 
     return {
       total_suppliers: total_suppliers || 0,
       active_suppliers: active_suppliers || 0,
       pending_pos: pending_pos || 0,
-      total_po_value,
+      overdue_deliveries: overdue_deliveries || 0,
+      total_outstanding,
     };
   }
 }

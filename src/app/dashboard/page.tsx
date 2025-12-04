@@ -210,21 +210,21 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <StatCard
                     label="Active"
-                    value={stats?.suppliers.active || 0}
+                    value={stats?.suppliers.active_suppliers || 0}
                     color="text-[#34C759]"
                     href="/suppliers"
                     small
                   />
                   <StatCard
                     label="PO รอ"
-                    value={stats?.suppliers.pending_po || 0}
+                    value={stats?.suppliers.pending_pos || 0}
                     color="text-[#FF9500]"
                     href="/suppliers?tab=po"
                     small
                   />
                   <StatCard
                     label="ค้างชำระ"
-                    value={formatCurrency(stats?.suppliers.pending_amount || 0)}
+                    value={formatCurrency(stats?.suppliers.total_outstanding || 0)}
                     isAmount
                     color="text-[#FF3B30]"
                     small
@@ -358,14 +358,6 @@ export default function DashboardPage() {
             </div>
           </>
         )}
-      </div>
-
-      {/* Dev Mode Indicator */}
-      <div className="fixed bottom-4 right-4">
-        <div className="bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 shadow-lg">
-          <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-          Mock Data Mode
-        </div>
       </div>
     </div>
   );
