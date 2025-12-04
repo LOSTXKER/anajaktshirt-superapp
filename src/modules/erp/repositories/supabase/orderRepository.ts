@@ -147,9 +147,12 @@ export class SupabaseOrderRepository implements IOrderRepository {
     filters?: OrderFilters,
     pagination?: PaginationParams
   ): Promise<PaginatedResult<Order>> {
+    console.log('Fetching orders with filters:', filters);
+    
+    // Simple query without join first to test
     let query = this.supabase
       .from('orders')
-      .select(`*, customer:customers(*)`, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     // Apply filters
     if (filters?.status) {
@@ -194,17 +197,15 @@ export class SupabaseOrderRepository implements IOrderRepository {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching orders:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
+      console.error('Error fetching orders:', JSON.stringify(error, null, 2));
+      console.error('Error details:', error.message, error.code, error.hint);
       return {
         data: [],
         pagination: { page, pageSize, totalCount: 0, totalPages: 0 },
       };
     }
+    
+    console.log('Orders fetched successfully:', data?.length || 0, 'records');
 
     const totalCount = count || 0;
     return {
