@@ -31,14 +31,22 @@ import {
   Phone,
   Mail,
   Hash,
+  Palette,
+  Shield,
 } from 'lucide-react';
 import { Button, Card, Input, Modal, useToast } from '@/modules/shared/ui';
 import {
   useERPOrder,
   useERPWorkItems,
   useERPPayments,
+  useERPOrderDesignFlow,
   ORDER_STATUS_CONFIG,
   PAYMENT_STATUS_CONFIG,
+  DesignSummaryCard,
+  DesignVersionCard,
+  ApprovalGatesSummary,
+  CompactGatesProgress,
+  MockupApprovalCard,
 } from '@/modules/erp';
 import type { Order, OrderStatus, OrderWorkItem, OrderPayment } from '@/modules/erp';
 
@@ -49,6 +57,7 @@ import type { Order, OrderStatus, OrderWorkItem, OrderPayment } from '@/modules/
 const TABS = [
   { key: 'details', label: 'ข้อมูลทั่วไป', icon: FileText },
   { key: 'items', label: 'รายการงาน', icon: Package },
+  { key: 'design', label: 'ออกแบบ & อนุมัติ', icon: Palette },
   { key: 'payments', label: 'การชำระเงิน', icon: CreditCard },
   { key: 'production', label: 'การผลิต', icon: Factory },
   { key: 'history', label: 'ประวัติ', icon: Clock },
@@ -63,6 +72,13 @@ export default function OrderDetailPage() {
   const { order, loading, error, refetch } = useERPOrder(orderId);
   const { workItems } = useERPWorkItems(orderId);
   const { payments } = useERPPayments(orderId);
+  const { 
+    designs, 
+    mockups, 
+    gates, 
+    summary: designSummary, 
+    loading: designLoading 
+  } = useERPOrderDesignFlow(orderId);
 
   // UI State
   const [activeTab, setActiveTab] = useState<string>('details');
@@ -512,6 +528,17 @@ export default function OrderDetailPage() {
             </Card>
           )}
 
+          {/* Design & Approval Tab */}
+          {activeTab === 'design' && (
+            <DesignApprovalTab
+              orderId={orderId}
+              designs={designs}
+              mockups={mockups}
+              summary={designSummary}
+              loading={designLoading}
+            />
+          )}
+
           {/* Payments Tab */}
           {activeTab === 'payments' && (
             <Card className="p-6 bg-white apple-card">
@@ -770,6 +797,283 @@ function PaymentCard({
                     </div>
                   );
 }
+
+// ---------------------------------------------
+// Design & Approval Tab Component
+// ---------------------------------------------
+
+import type { 
+  OrderDesign, 
+  OrderMockup, 
+  OrderGatesSummary,
+  DesignApprovalSummary,
+} from '@/modules/erp';
+import { 
+  mockDesignVersions,
+} from '@/modules/erp/mocks/data';
+
+function DesignApprovalTab({
+  orderId,
+  designs,
+  mockups,
+  summary,
+  loading,
+}: {
+  orderId: string;
+  designs: OrderDesign[];
+  mockups: OrderMockup[];
+  summary: {
+    gates: OrderGatesSummary | null;
+    design: DesignApprovalSummary | null;
+    mockup: any;
+    canStartProduction: boolean;
+  };
+  loading: boolean;
+}) {
+  const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
+  const [showVersionModal, setShowVersionModal] = useState(false);
+
+  const selectedDesign = designs.find(d => d.id === selectedDesignId);
+  const selectedDesignVersions = selectedDesign
+    ? mockDesignVersions
+        .filter(v => v.order_design_id === selectedDesign.id)
+        .sort((a, b) => b.version_number - a.version_number)
+    : [];
+
+  const latestMockup = mockups.length > 0
+    ? mockups.reduce((latest, m) => m.version_number > latest.version_number ? m : latest, mockups[0])
+    : null;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="w-8 h-8 border-4 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Left Column - Designs */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Design Summary Stats */}
+        {summary.design && (
+          <Card className="p-6 bg-white apple-card">
+            <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
+              <Palette className="w-5 h-5 text-[#007AFF]" />
+              สรุปการออกแบบ
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-3 bg-[#F5F5F7] rounded-xl text-center">
+                <div className="text-2xl font-bold text-[#1D1D1F]">{summary.design.total_designs}</div>
+                <div className="text-xs text-[#86868B]">ไฟล์ออกแบบ</div>
+              </div>
+              <div className="p-3 bg-[#34C759]/10 rounded-xl text-center">
+                <div className="text-2xl font-bold text-[#34C759]">{summary.design.approved_designs}</div>
+                <div className="text-xs text-[#34C759]">อนุมัติแล้ว</div>
+              </div>
+              <div className="p-3 bg-[#FF9500]/10 rounded-xl text-center">
+                <div className="text-2xl font-bold text-[#FF9500]">{summary.design.pending_designs}</div>
+                <div className="text-xs text-[#FF9500]">รอตรวจสอบ</div>
+              </div>
+              <div className="p-3 bg-[#007AFF]/10 rounded-xl text-center">
+                <div className="text-2xl font-bold text-[#007AFF]">{summary.design.total_revisions}</div>
+                <div className="text-xs text-[#007AFF]">แก้ไขทั้งหมด</div>
+              </div>
+            </div>
+            
+            {/* Revision Cost Warning */}
+            {summary.design.paid_revisions_count > 0 && (
+              <div className="mt-4 p-3 bg-[#FF9500]/10 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[#FF9500]">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    ค่าแก้ไขเพิ่มเติม ({summary.design.paid_revisions_count} ครั้ง)
+                  </span>
+                </div>
+                <span className="text-lg font-bold text-[#FF9500]">
+                  ฿{summary.design.paid_revisions_total.toLocaleString()}
+                </span>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Designs List */}
+        <Card className="p-6 bg-white apple-card">
+          <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4">
+            ไฟล์ออกแบบ ({designs.length} ไฟล์)
+          </h3>
+
+          {designs.length === 0 ? (
+            <div className="text-center py-12 text-[#86868B]">
+              <Palette className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>ยังไม่มีไฟล์ออกแบบ</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {designs.map((design) => {
+                const versions = mockDesignVersions.filter(v => v.order_design_id === design.id);
+                return (
+                  <DesignSummaryCard
+                    key={design.id}
+                    design={design}
+                    versions={versions}
+                    onClick={() => {
+                      setSelectedDesignId(design.id);
+                      setShowVersionModal(true);
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
+        {/* Mockup Section */}
+        <Card className="p-6 bg-white apple-card">
+          <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
+            <Image className="w-5 h-5 text-[#34C759]" />
+            Mockup
+          </h3>
+
+          {!latestMockup ? (
+            <div className="text-center py-12 text-[#86868B]">
+              <Image className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>ยังไม่มี Mockup</p>
+            </div>
+          ) : (
+            <MockupApprovalCard
+              mockup={latestMockup}
+              onApprove={() => {
+                // TODO: Implement approval
+                console.log('Approve mockup');
+              }}
+              onReject={(feedback) => {
+                // TODO: Implement rejection
+                console.log('Reject mockup:', feedback);
+              }}
+            />
+          )}
+        </Card>
+      </div>
+
+      {/* Right Column - Approval Gates */}
+      <div className="space-y-6">
+        {summary.gates && (
+          <ApprovalGatesSummary
+            summary={summary.gates}
+            onGateClick={(gate) => {
+              console.log('Gate clicked:', gate);
+            }}
+          />
+        )}
+
+        {/* Production Ready Banner */}
+        {summary.canStartProduction ? (
+          <Card className="p-6 bg-[#34C759]/10 border-2 border-[#34C759]/30 apple-card">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-[#34C759] rounded-xl flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-[#34C759]">พร้อมผลิต!</h3>
+                <p className="text-sm text-[#34C759]/80">ผ่าน Gates ทั้งหมดแล้ว</p>
+              </div>
+            </div>
+            <Button className="w-full gap-2 bg-[#34C759] hover:bg-[#2DB84D]">
+              <Factory className="w-4 h-4" />
+              ส่งเข้าผลิต
+            </Button>
+          </Card>
+        ) : (
+          <Card className="p-6 bg-[#FF9500]/10 border-2 border-[#FF9500]/30 apple-card">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-[#FF9500] rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-[#FF9500]">ยังผลิตไม่ได้</h3>
+                <p className="text-sm text-[#FF9500]/80">
+                  รอ: {summary.gates?.blocking_gates.join(', ') || 'Gates'}
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Design Versions Modal */}
+      <Modal
+        isOpen={showVersionModal}
+        onClose={() => {
+          setShowVersionModal(false);
+          setSelectedDesignId(null);
+        }}
+        title={selectedDesign?.design_name || 'Design Versions'}
+        size="lg"
+      >
+        {selectedDesign && (
+          <div className="p-4 space-y-4">
+            {/* Design Info */}
+            <div className="p-4 bg-[#F5F5F7] rounded-xl">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-[#86868B]">ตำแหน่ง:</span>
+                  <span className="ml-2 text-[#1D1D1F]">{selectedDesign.position || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-[#86868B]">แก้ไข:</span>
+                  <span className="ml-2 text-[#1D1D1F]">
+                    {selectedDesign.revision_count} ครั้ง
+                    {selectedDesign.paid_revision_count > 0 && (
+                      <span className="text-[#FF9500]">
+                        {' '}(เสียค่าแก้ ฿{selectedDesign.paid_revision_total})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+              {selectedDesign.brief_text && (
+                <div className="mt-3 pt-3 border-t border-[#E8E8ED]">
+                  <span className="text-xs text-[#86868B]">Brief:</span>
+                  <p className="text-sm text-[#1D1D1F] mt-1">{selectedDesign.brief_text}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Versions List */}
+            <h4 className="font-semibold text-[#1D1D1F]">
+              ประวัติเวอร์ชัน ({selectedDesignVersions.length})
+            </h4>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {selectedDesignVersions.map((version, index) => (
+                <DesignVersionCard
+                  key={version.id}
+                  version={version}
+                  isLatest={index === 0}
+                  onApprove={() => {
+                    console.log('Approve version:', version.id);
+                  }}
+                  onReject={(feedback) => {
+                    console.log('Reject version:', version.id, feedback);
+                  }}
+                  onPreview={() => {
+                    window.open(version.file_url, '_blank');
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+// ---------------------------------------------
+// Original ApprovalGate (for Production tab)
+// ---------------------------------------------
 
 function ApprovalGate({
   label,
