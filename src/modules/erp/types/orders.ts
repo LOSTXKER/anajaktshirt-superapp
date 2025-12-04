@@ -33,20 +33,13 @@ import type {
 } from './common';
 
 // ---------------------------------------------
-// Order Type (Production Mode Config)
+// Order Type - Re-exported from config.ts
+// See config.ts for the full OrderType interface
 // ---------------------------------------------
 
-export interface OrderType extends BaseEntity {
-  code: OrderTypeCode;
-  name: string;
-  name_th: string;
-  description?: string;
-  default_lead_days: number;
-  requires_pattern: boolean;
-  requires_fabric: boolean;
-  sort_order: number;
-  is_active: boolean;
-}
+// Note: OrderType is defined in config.ts to avoid duplication
+// This export is kept for backward compatibility
+export type { OrderType } from './config';
 
 // ---------------------------------------------
 // Work Type
@@ -55,17 +48,20 @@ export interface OrderType extends BaseEntity {
 export interface WorkType extends BaseEntity {
   code: string;
   name: string;
-  name_th: string;
+  name_th?: string;
   description?: string;
-  category_code: WorkCategory;
+  category: WorkCategory; // DB column name
+  category_code?: WorkCategory; // Alias for compatibility
   base_price: number;
   requires_design: boolean;
-  requires_material: boolean;
-  estimated_minutes_per_unit: number;
+  requires_material?: boolean;
+  estimated_days?: number;
+  estimated_minutes_per_unit?: number;
+  default_production_mode?: 'in_house' | 'outsource' | 'hybrid';
   can_outsource?: boolean;
   in_house_capable?: boolean;
   is_active: boolean;
-  sort_order: number;
+  sort_order?: number;
 }
 
 // ---------------------------------------------

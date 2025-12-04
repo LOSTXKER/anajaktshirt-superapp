@@ -349,6 +349,7 @@ export interface ReceiveGoodsItemInput {
 export interface SupplierFilters extends BaseFilters {
   status?: SupplierStatus;
   service_types?: string[];
+  category?: string;
 }
 
 export interface PurchaseOrderFilters extends BaseFilters {
@@ -393,6 +394,8 @@ export interface PurchaseOrderSummary {
 export interface SupplierStats {
   total_suppliers: number;
   active_suppliers: number;
+  total_po: number;
+  pending_po: number; // Alias for pending_pos
   pending_pos: number;
   overdue_deliveries: number;
   total_outstanding: number;

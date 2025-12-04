@@ -140,11 +140,32 @@ export function useERPChangeRequests(filters?: ChangeRequestFilters, pagination?
     }
   };
 
+  // Calculate inline stats
+  const stats: ChangeRequestStats = {
+    total: totalCount,
+    pending: changeRequests.filter(cr => cr.status === 'pending').length,
+    quoted: changeRequests.filter(cr => cr.status === 'quoted').length,
+    approved: changeRequests.filter(cr => cr.status === 'approved').length,
+    rejected: changeRequests.filter(cr => cr.status === 'rejected').length,
+    completed: changeRequests.filter(cr => cr.status === 'completed').length,
+    cancelled: changeRequests.filter(cr => cr.status === 'cancelled').length,
+    total_cost: changeRequests.reduce((sum, cr) => sum + (cr.actual_cost || 0), 0),
+    by_type: changeRequests.reduce((acc, cr) => {
+      acc[cr.change_type] = (acc[cr.change_type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+    by_impact: changeRequests.reduce((acc, cr) => {
+      acc[cr.impact_level] = (acc[cr.impact_level] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+  };
+
   return {
     changeRequests,
     totalCount,
     loading,
     error,
+    stats,
     createChangeRequest,
     quoteChangeRequest,
     respondToRequest,

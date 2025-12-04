@@ -61,16 +61,46 @@ function dbToWorkType(row: Tables<'work_types'>): WorkType {
 
 // Helper to convert DB row to OrderType type
 function dbToOrderType(row: Tables<'order_types'>): OrderType {
+  // Map features_included/excluded to features array for UI
+  const features: { label: string; available: boolean }[] = [];
+  
+  if (row.features_included) {
+    (row.features_included as string[]).forEach(f => {
+      features.push({ label: f, available: true });
+    });
+  }
+  if (row.features_excluded) {
+    (row.features_excluded as string[]).forEach(f => {
+      features.push({ label: f, available: false });
+    });
+  }
+
   return {
     id: row.id,
     code: row.code,
     name: row.name,
-    description: row.description,
+    name_th: row.name, // Use name as name_th (DB stores Thai names)
+    description: row.description || undefined,
+    description_full: row.description || undefined,
+    icon: row.code === 'ready_made' ? 'shirt' 
+      : row.code === 'custom_sewing' ? 'scissors'
+      : row.code === 'full_custom' ? 'palette'
+      : row.code === 'print_only' ? 'printer' 
+      : 'package',
+    requires_products: row.code === 'ready_made' || row.code === 'print_only',
+    requires_design: true,
+    requires_fabric: row.code === 'custom_sewing' || row.code === 'full_custom',
+    requires_pattern: row.code === 'full_custom',
+    default_production_mode: 'hybrid' as const,
+    lead_days_min: row.lead_time_min || 3,
+    lead_days_max: row.lead_time_max || 7,
     lead_time_min: row.lead_time_min,
     lead_time_max: row.lead_time_max,
     features_included: row.features_included,
     features_excluded: row.features_excluded,
-    workflow_steps: row.workflow_steps,
+    features,
+    workflow_steps: row.workflow_steps as string[] || [],
+    sort_order: row.lead_time_min || 0,
     is_active: row.is_active,
     created_at: row.created_at,
   };
@@ -185,7 +215,7 @@ export class SupabaseConfigRepository {
   }
 
   async findProducts(
-    filters?: { search?: string; category?: string; model?: string; inStock?: boolean },
+    filters?: { search?: string; category?: string; model?: string; color?: string; size?: string; inStock?: boolean },
     pagination?: Pagination
   ): Promise<{ data: Product[]; totalCount: number }> {
     let query = this.supabase
@@ -199,6 +229,12 @@ export class SupabaseConfigRepository {
     }
     if (filters?.model) {
       query = query.eq('model', filters.model);
+    }
+    if (filters?.color) {
+      query = query.eq('color', filters.color);
+    }
+    if (filters?.size) {
+      query = query.eq('size', filters.size);
     }
     if (filters?.inStock) {
       query = query.gt('stock_qty', 0);
@@ -264,6 +300,43 @@ export class SupabaseConfigRepository {
     return (data || []).map(dbToWorkType);
   }
 
+  async findWorkTypes(
+    filters?: { search?: string; category?: string },
+    pagination?: Pagination
+  ): Promise<{ data: WorkType[]; totalCount: number }> {
+    let query = this.supabase
+      .from('work_types')
+      .select('*', { count: 'exact' })
+      .eq('is_active', true);
+
+    if (filters?.category) {
+      query = query.eq('category', filters.category);
+    }
+    if (filters?.search) {
+      query = query.or(`name.ilike.%${filters.search}%,code.ilike.%${filters.search}%`);
+    }
+
+    query = query.order('category').order('name');
+
+    if (pagination) {
+      const start = pagination.page * pagination.pageSize;
+      const end = start + pagination.pageSize - 1;
+      query = query.range(start, end);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('Error fetching work types:', error);
+      return { data: [], totalCount: 0 };
+    }
+
+    return {
+      data: (data || []).map(dbToWorkType),
+      totalCount: count || 0,
+    };
+  }
+
   async getWorkTypeByCode(code: string): Promise<WorkType | null> {
     const { data, error } = await this.supabase
       .from('work_types')
@@ -292,6 +365,40 @@ export class SupabaseConfigRepository {
     return (data || []).map(dbToOrderType);
   }
 
+  async findOrderTypes(
+    filters?: { search?: string },
+    pagination?: Pagination
+  ): Promise<{ data: OrderType[]; totalCount: number }> {
+    let query = this.supabase
+      .from('order_types')
+      .select('*', { count: 'exact' })
+      .eq('is_active', true);
+
+    if (filters?.search) {
+      query = query.or(`name.ilike.%${filters.search}%,code.ilike.%${filters.search}%`);
+    }
+
+    query = query.order('lead_time_min');
+
+    if (pagination) {
+      const start = pagination.page * pagination.pageSize;
+      const end = start + pagination.pageSize - 1;
+      query = query.range(start, end);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('Error fetching order types:', error);
+      return { data: [], totalCount: 0 };
+    }
+
+    return {
+      data: (data || []).map(dbToOrderType),
+      totalCount: count || 0,
+    };
+  }
+
   async getOrderTypeByCode(code: string): Promise<OrderType | null> {
     const { data, error } = await this.supabase
       .from('order_types')
@@ -301,6 +408,17 @@ export class SupabaseConfigRepository {
 
     if (error || !data) return null;
     return dbToOrderType(data);
+  }
+
+  // ==================== PRIORITY LEVELS ====================
+
+  async getPriorityLevels(): Promise<any[]> {
+    // Priority levels are usually static, return default values
+    return [
+      { code: 'normal', name: 'ปกติ', surcharge_percent: 0, lead_time_days: 0 },
+      { code: 'rush', name: 'เร่งด่วน', surcharge_percent: 20, lead_time_days: -2 },
+      { code: 'urgent', name: 'ด่วนมาก', surcharge_percent: 50, lead_time_days: -4 },
+    ];
   }
 }
 

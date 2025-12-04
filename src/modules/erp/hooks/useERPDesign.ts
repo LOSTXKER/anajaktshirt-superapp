@@ -170,3 +170,85 @@ export function useERPApprovalGates(orderId: string) {
     rejectMockup,
   };
 }
+
+// ---------------------------------------------
+// useERPOrderDesignFlow - Complete design flow for an order
+// Combines designs, mockups, and approval gates
+// ---------------------------------------------
+
+export function useERPOrderDesignFlow(orderId: string) {
+  const { 
+    designs, 
+    mockups, 
+    approvalGates, 
+    loading, 
+    error,
+    approveMockup, 
+    rejectMockup 
+  } = useERPApprovalGates(orderId);
+
+  // Calculate overall status
+  const allDesignsApproved = designs.length > 0 && designs.every(d => {
+    const latestVersion = d.versions?.[0];
+    return latestVersion?.status === 'approved';
+  });
+  
+  const mockupApproved = mockups.length > 0 && mockups.every(m => m.status === 'approved');
+  
+  const readyForProduction = allDesignsApproved && (mockups.length === 0 || mockupApproved);
+
+  // Get latest versions of each design
+  const latestVersions: DesignVersion[] = designs
+    .map(d => d.versions?.[0])
+    .filter((v): v is DesignVersion => !!v);
+
+  // Summary for the UI (matching expected structure)
+  const summary = {
+    gates: {
+      order_id: orderId,
+      order_number: '',
+      gates: approvalGates,
+      design_approved: allDesignsApproved,
+      mockup_approved: mockupApproved,
+      material_ready: false,
+      payment_confirmed: false,
+      production_unlocked: readyForProduction,
+      blocking_gates: [] as string[],
+    },
+    design: {
+      order_id: orderId,
+      total_designs: designs.length,
+      approved_designs: designs.filter(d => d.versions?.[0]?.status === 'approved').length,
+      pending_designs: designs.filter(d => d.versions?.[0]?.status === 'pending' || d.versions?.[0]?.status === 'in_progress').length,
+      rejected_designs: designs.filter(d => d.versions?.[0]?.status === 'rejected').length,
+      total_revisions: latestVersions.reduce((sum, v) => sum + (v.version_number || 0), 0),
+      free_revisions_used: 0,
+      paid_revisions_count: 0,
+      paid_revisions_total: 0,
+      all_approved: allDesignsApproved,
+      last_updated: designs[0]?.updated_at || new Date().toISOString(),
+    },
+    mockup: {
+      total: mockups.length,
+      approved: mockups.filter(m => m.status === 'approved').length,
+      pending: mockups.filter(m => m.status === 'pending').length,
+    },
+    canStartProduction: readyForProduction,
+  };
+
+  return {
+    designs,
+    mockups,
+    gates: approvalGates, // Alias for the UI
+    approvalGates,
+    latestVersions,
+    summary, // Summary for the UI
+    allDesignsApproved,
+    mockupApproved,
+    readyForProduction,
+    loading,
+    error,
+    approveMockup,
+    rejectMockup,
+  };
+}

@@ -56,6 +56,8 @@ export interface AuditFields extends Timestamps {
 // ---------------------------------------------
 
 export interface Address {
+  name?: string; // Recipient name
+  phone?: string; // Contact phone
   address?: string;
   district?: string;
   province?: string;
@@ -206,7 +208,8 @@ export interface ActionResult<T = void> {
   success: boolean;
   data?: T;
   message?: string;
-  errors?: string[];
+  error?: string; // Single error message
+  errors?: string[]; // Multiple error messages
 }
 
 // ---------------------------------------------

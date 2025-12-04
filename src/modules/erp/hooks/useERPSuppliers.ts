@@ -188,19 +188,19 @@ export function useERPSupplierStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const data = await supabaseSupplierRepository.getStats();
-        setStats(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const data = await supabaseSupplierRepository.getStats();
+      setStats(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStats();
   }, []);
 
@@ -208,5 +208,6 @@ export function useERPSupplierStats() {
     stats,
     loading,
     error,
+    refetch: fetchStats,
   };
 }

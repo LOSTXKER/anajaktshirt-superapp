@@ -201,19 +201,19 @@ export function useERPProductionStats(filters?: ProductionJobFilters) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const data = await supabaseProductionRepository.getStats(filters);
-        setStats(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const data = await supabaseProductionRepository.getStats(filters);
+      setStats(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStats();
   }, [filters]);
 
@@ -221,6 +221,7 @@ export function useERPProductionStats(filters?: ProductionJobFilters) {
     stats,
     loading,
     error,
+    refetch: fetchStats,
   };
 }
 
@@ -324,16 +325,36 @@ export function useERPProductionMutations() {
     }
   };
 
+  // Alias: updateJobStatus (calls updateJob with status)
+  const updateJobStatus = async (jobId: string, status: string): Promise<{ success: boolean; data?: ProductionJob; error?: string }> => {
+    try {
+      const job = await updateJob(jobId, { status: status as ProductionJob['status'] });
+      return { success: true, data: job };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Unknown error' };
+    }
+  };
+
+  // Alias: assignJob (calls assignToStation or assignToWorker)
+  const assignJob = async (jobId: string, assigneeId: string, assigneeType: 'station' | 'worker' = 'station') => {
+    if (assigneeType === 'station') {
+      return assignToStation(jobId, assigneeId);
+    }
+    return assignToWorker(jobId, assigneeId);
+  };
+
   return {
     loading,
     error,
     createJob,
     updateJob,
+    updateJobStatus,
     startJob,
     completeJob,
     logProduction,
     assignToStation,
     assignToWorker,
+    assignJob,
   };
 }
 

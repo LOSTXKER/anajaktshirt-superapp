@@ -300,11 +300,14 @@ export function useERPOrderConfig() {
     const fetchOrderConfig = async () => {
       try {
         setLoading(true);
-        const { data } = await supabaseConfigRepository.findOrderTypes({}, { page: 0, pageSize: 100 });
-        setOrderTypes(data);
-        // TODO: Fetch priority levels from DB
-        setPriorityLevels([]);
+        const [orderTypesResult, priorities] = await Promise.all([
+          supabaseConfigRepository.findOrderTypes({}, { page: 0, pageSize: 100 }),
+          supabaseConfigRepository.getPriorityLevels(),
+        ]);
+        setOrderTypes(orderTypesResult.data);
+        setPriorityLevels(priorities as PriorityLevel[]);
       } catch (err: any) {
+        console.error('Error fetching order config:', err);
         setError(err.message);
       } finally {
         setLoading(false);

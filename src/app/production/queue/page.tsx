@@ -91,7 +91,7 @@ function calculatePriorityScore(job: ProductionJob): number {
   }
   
   // 4. Quantity consideration (small jobs get slight boost)
-  if (job.quantity <= 50) {
+  if (job.ordered_qty <= 50) {
     score += 5; // Small batch bonus
   }
   
@@ -200,7 +200,7 @@ export default function ProductionQueuePage() {
             <Package className="w-3 h-3" />
             <span>{workType?.label || job.work_type_code}</span>
             <span>•</span>
-            <span>{job.quantity} ชิ้น</span>
+            <span>{job.ordered_qty} ชิ้น</span>
           </div>
           
           <div className="flex items-center gap-2 text-[#86868B]">
@@ -455,7 +455,7 @@ export default function ProductionQueuePage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-[#1D1D1F]">{job.customer_name}</td>
-                        <td className="px-4 py-3 text-sm">{job.quantity}</td>
+                        <td className="px-4 py-3 text-sm">{job.ordered_qty}</td>
                         <td className={`px-4 py-3 text-sm ${isOverdue ? 'text-[#FF3B30] font-medium' : 'text-[#86868B]'}`}>
                           {formatDate(job.due_date)}
                         </td>

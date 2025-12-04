@@ -150,10 +150,16 @@ export interface OrderType {
   default_production_mode: ProductionMode;
   lead_days_min?: number;
   lead_days_max?: number;
+  // Also support DB column names
+  lead_time_min?: number;
+  lead_time_max?: number;
+  features_included?: string[] | null;
+  features_excluded?: string[] | null;
   workflow_steps?: string[];
   features?: OrderTypeFeature[];
   sort_order: number;
   is_active?: boolean;
+  created_at?: string;
 }
 
 // ---------------------------------------------

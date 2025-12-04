@@ -98,11 +98,24 @@ export function useERPQCRecords(filters?: QCRecordFilters, pagination?: Paginati
     }
   };
 
+  // Calculate inline stats matching QCStats type
+  const today = new Date().toISOString().split('T')[0];
+  const stats: QCStats = {
+    total_records: totalCount,
+    pending_qc: qcRecords.filter(r => r.status === 'pending' || r.status === 'in_progress').length,
+    failed_today: qcRecords.filter(r => r.result === 'fail' && r.checked_at?.startsWith(today)).length,
+    rework_in_progress: qcRecords.filter(r => r.status === 'pending_rework').length,
+    avg_pass_rate: totalCount > 0 ? Math.round((qcRecords.filter(r => r.result === 'pass').length / totalCount) * 100) : 0,
+    avg_check_time_minutes: 0, // Would need actual data to calculate
+  };
+
   return {
     qcRecords,
+    records: qcRecords, // Alias for compatibility
     totalCount,
     loading,
     error,
+    stats, // Stats for convenience
     createQCRecord,
     takeAction,
     markFollowUpComplete,
@@ -155,4 +168,64 @@ export function useERPQCStats(filters?: QCRecordFilters) {
   }, [filters?.order_id, filters?.production_job_id]);
 
   return { stats, loading, error };
+}
+
+// ---------------------------------------------
+// useERPQCForOrder - QC Records filtered by Order ID
+// ---------------------------------------------
+
+export function useERPQCForOrder(orderId: string) {
+  const { 
+    qcRecords, 
+    totalCount, 
+    loading, 
+    error, 
+    createQCRecord,
+    takeAction,
+  } = useERPQCRecords({ order_id: orderId });
+
+  const { stats } = useERPQCStats({ order_id: orderId });
+
+  // Group records by stage
+  const recordsByStage = qcRecords.reduce((acc, record) => {
+    if (!acc[record.stage]) {
+      acc[record.stage] = [];
+    }
+    acc[record.stage].push(record);
+    return acc;
+  }, {} as Record<string, QCRecord[]>);
+
+  // Calculate pass rate
+  const passRate = totalCount > 0 
+    ? (qcRecords.filter(r => r.result === 'pass').length / totalCount) * 100 
+    : 0;
+
+  // Summary for the UI (matching QCSummaryCard expected structure)
+  const passed = qcRecords.filter(r => r.result === 'pass').length;
+  const failed = qcRecords.filter(r => r.result === 'fail').length;
+  const rework = qcRecords.filter(r => r.actions?.some(a => a.action_type === 'rework')).length;
+  
+  const summary = {
+    total_records: totalCount,
+    total_checked: totalCount,
+    total_passed: passed,
+    total_failed: failed,
+    total_rework: rework,
+    overall_pass_rate: Math.round(passRate),
+    has_pending_rework: qcRecords.some(r => r.status === 'pending_rework'),
+    pending_follow_ups: qcRecords.filter(r => r.follow_up_required && !r.follow_up_completed).length,
+  };
+
+  return {
+    records: qcRecords,
+    totalCount,
+    loading,
+    error,
+    stats,
+    summary, // Alias for the UI
+    recordsByStage,
+    passRate,
+    createRecord: createQCRecord,
+    takeAction,
+  };
 }
