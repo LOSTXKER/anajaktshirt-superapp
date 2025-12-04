@@ -25,6 +25,9 @@ import {
   Factory,
   Play,
   Loader2,
+  Palette,
+  ClipboardCheck,
+  Ban,
 } from 'lucide-react';
 import { useOrder, useOrderStatusHistory, useOrderNotes } from '@/modules/orders/hooks/useOrders';
 import { useOrderMutations } from '@/modules/orders/hooks/useOrderMutations';
@@ -37,6 +40,145 @@ import {
 import { DesignManager } from '@/modules/orders/components/DesignManager';
 import { MockupManager } from '@/modules/orders/components/MockupManager';
 import { PaymentManager } from '@/modules/orders/components/PaymentManager';
+
+// Order Progress Steps Configuration
+const ORDER_STEPS = [
+  { key: 'draft', label: 'ร่าง', icon: FileText, description: 'สร้างออเดอร์' },
+  { key: 'payment', label: 'ชำระเงิน', icon: DollarSign, description: 'รอชำระ/มัดจำ' },
+  { key: 'design', label: 'ออกแบบ', icon: Palette, description: 'ออกแบบงาน' },
+  { key: 'production', label: 'ผลิต', icon: Factory, description: 'กำลังผลิต' },
+  { key: 'qc', label: 'QC', icon: ClipboardCheck, description: 'ตรวจสอบคุณภาพ' },
+  { key: 'shipping', label: 'จัดส่ง', icon: Truck, description: 'เตรียม/จัดส่ง' },
+  { key: 'completed', label: 'สำเร็จ', icon: CheckCircle2, description: 'เสร็จสิ้น' },
+];
+
+// Map status to step index
+const getStepFromStatus = (status: string): number => {
+  switch (status) {
+    case 'draft':
+    case 'quoted':
+      return 0;
+    case 'awaiting_payment':
+    case 'partial_paid':
+      return 1;
+    case 'designing':
+    case 'awaiting_mockup_approval':
+      return 2;
+    case 'in_production':
+    case 'awaiting_material':
+    case 'queued':
+      return 3;
+    case 'qc_pending':
+      return 4;
+    case 'ready_to_ship':
+    case 'shipped':
+      return 5;
+    case 'completed':
+      return 6;
+    case 'cancelled':
+      return -1;
+    default:
+      return 0;
+  }
+};
+
+// Order Progress Bar Component (Full Version for Detail Page)
+function OrderProgressBarFull({ status }: { status: string }) {
+  const currentStep = getStepFromStatus(status);
+  
+  if (status === 'cancelled') {
+    return (
+      <Card className="p-6 bg-red-50 border border-red-200">
+        <div className="flex items-center justify-center gap-3">
+          <Ban className="w-8 h-8 text-red-500" />
+          <div>
+            <h3 className="text-lg font-semibold text-red-700">ออเดอร์ถูกยกเลิก</h3>
+            <p className="text-sm text-red-600">ออเดอร์นี้ถูกยกเลิกแล้ว</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card className="p-6 bg-white border border-[#E8E8ED]">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-[#1D1D1F]">ความคืบหน้า</h3>
+        <span className="text-sm text-[#86868B]">ขั้นตอนที่ {currentStep + 1} จาก {ORDER_STEPS.length}</span>
+      </div>
+      
+      {/* Steps */}
+      <div className="relative">
+        {/* Progress Line */}
+        <div className="absolute top-6 left-0 right-0 h-1 bg-[#E8E8ED] rounded-full" />
+        <div 
+          className="absolute top-6 left-0 h-1 bg-[#34C759] rounded-full transition-all duration-500"
+          style={{ width: `${(currentStep / (ORDER_STEPS.length - 1)) * 100}%` }}
+        />
+        
+        {/* Step Circles */}
+        <div className="relative flex justify-between">
+          {ORDER_STEPS.map((step, index) => {
+            const isCompleted = index < currentStep;
+            const isCurrent = index === currentStep;
+            const Icon = step.icon;
+            
+            return (
+              <div key={step.key} className="flex flex-col items-center" style={{ width: '14.28%' }}>
+                {/* Circle */}
+                <div 
+                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    isCompleted 
+                      ? 'bg-[#34C759] text-white shadow-lg shadow-green-200' 
+                      : isCurrent 
+                        ? 'bg-[#007AFF] text-white shadow-lg shadow-blue-200 ring-4 ring-blue-100' 
+                        : 'bg-[#F5F5F7] text-[#86868B] border-2 border-[#E8E8ED]'
+                  }`}
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 className="w-6 h-6" />
+                  ) : (
+                    <Icon className="w-5 h-5" />
+                  )}
+                </div>
+                
+                {/* Label */}
+                <div className="mt-3 text-center">
+                  <div className={`text-sm font-medium ${
+                    isCompleted ? 'text-[#34C759]' : isCurrent ? 'text-[#007AFF]' : 'text-[#86868B]'
+                  }`}>
+                    {step.label}
+                  </div>
+                  <div className="text-xs text-[#86868B] mt-0.5 hidden md:block">
+                    {step.description}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Current Status Info */}
+      <div className="mt-6 p-4 bg-[#F5F5F7] rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white">
+            {(() => {
+              const Icon = ORDER_STEPS[currentStep]?.icon || Clock;
+              return <Icon className="w-5 h-5" />;
+            })()}
+          </div>
+          <div>
+            <p className="text-sm text-[#86868B]">สถานะปัจจุบัน</p>
+            <p className="text-lg font-semibold text-[#1D1D1F]">
+              {ORDER_STEPS[currentStep]?.label || 'ไม่ทราบ'} - {ORDER_STEPS[currentStep]?.description || ''}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -300,6 +442,11 @@ export default function OrderDetailPage() {
             {formatDate(order.due_date)}
           </div>
         </Card>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-6">
+        <OrderProgressBarFull status={order.status} />
       </div>
 
       {/* Tabs */}
