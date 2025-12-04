@@ -2242,3 +2242,563 @@ export function getMockupApprovalSummary(orderId: string): MockupApprovalSummary
   };
 }
 
+// =============================================
+// PHASE 4: CHANGE REQUEST MOCK DATA
+// =============================================
+
+import type {
+  ChangeRequest,
+  ChangeRequestLog,
+  ChangeRequestStats,
+} from '../types/change-requests';
+
+export const mockChangeRequests: ChangeRequest[] = [
+  {
+    id: 'cr-001',
+    request_number: 'CR-2024-0001',
+    order_id: 'order-001',
+    order_number: 'ORD-2024-0001',
+    
+    order_phase: 'mockup_approved',
+    change_type: 'design_revision',
+    change_category: 'customer_request',
+    
+    title: 'เปลี่ยนสีโลโก้',
+    description: 'ลูกค้าขอเปลี่ยนสีโลโก้จากน้ำเงินเป็นแดง',
+    customer_reason: 'ต้องการให้ตรงกับ CI ใหม่ของบริษัท',
+    
+    affected_work_items: ['wi-001'],
+    
+    impact: {
+      production_already_started: false,
+      produced_qty: 0,
+      waste_qty: 0,
+      materials_ordered: false,
+      materials_received: false,
+      material_waste_cost: 0,
+      designs_approved: true,
+      design_rework_required: true,
+      affects_due_date: false,
+      delay_days: 0,
+      affects_other_orders: false,
+      impact_level: 'low',
+      impact_description: 'ต้องแก้ไขไฟล์ออกแบบใหม่',
+    },
+    
+    fees: {
+      base_fee: 0,
+      design_fee: 200,
+      rework_fee: 0,
+      material_fee: 0,
+      waste_fee: 0,
+      rush_fee: 0,
+      other_fee: 0,
+      discount: 0,
+      total_fee: 200,
+    },
+    
+    days_delayed: 0,
+    
+    status: 'completed',
+    
+    quoted_at: '2024-12-01T10:00:00Z',
+    quoted_by: 'user-001',
+    customer_notified_at: '2024-12-01T10:30:00Z',
+    customer_response: 'accept',
+    customer_responded_at: '2024-12-01T11:00:00Z',
+    
+    payment_status: 'paid',
+    payment_required: true,
+    payment_received_at: '2024-12-01T11:30:00Z',
+    payment_reference: 'PAY-CR-001',
+    
+    completed_at: '2024-12-01T14:00:00Z',
+    completed_by: 'user-002',
+    
+    admin_notes: 'แก้ไขเสร็จแล้ว ส่ง mockup ใหม่ให้ลูกค้าดู',
+    
+    order: {
+      order_number: 'ORD-2024-0001',
+      customer_name: 'บริษัท ABC จำกัด',
+      status: 'in_production',
+    },
+    
+    created_at: '2024-12-01T09:00:00Z',
+    updated_at: '2024-12-01T14:00:00Z',
+  },
+  {
+    id: 'cr-002',
+    request_number: 'CR-2024-0002',
+    order_id: 'order-003',
+    order_number: 'ORD-2024-0003',
+    
+    order_phase: 'pre_production',
+    change_type: 'quantity_change',
+    change_category: 'customer_request',
+    
+    title: 'เพิ่มจำนวนเสื้อ',
+    description: 'ลูกค้าขอเพิ่มจำนวนเสื้อจาก 200 เป็น 250 ตัว',
+    customer_reason: 'มีพนักงานใหม่เพิ่มขึ้น',
+    
+    affected_products: ['prod-001'],
+    
+    impact: {
+      production_already_started: false,
+      produced_qty: 0,
+      waste_qty: 0,
+      materials_ordered: true,
+      materials_received: false,
+      material_waste_cost: 0,
+      designs_approved: true,
+      design_rework_required: false,
+      affects_due_date: true,
+      delay_days: 2,
+      affects_other_orders: false,
+      impact_level: 'medium',
+      impact_description: 'ต้องสั่งวัสดุเพิ่ม อาจส่งช้า 2 วัน',
+    },
+    
+    fees: {
+      base_fee: 0,
+      design_fee: 0,
+      rework_fee: 0,
+      material_fee: 5000, // ค่าเสื้อเพิ่ม 50 ตัว
+      waste_fee: 0,
+      rush_fee: 0,
+      other_fee: 0,
+      discount: 0,
+      total_fee: 5000,
+    },
+    
+    days_delayed: 2,
+    original_due_date: '2024-12-10',
+    new_due_date: '2024-12-12',
+    
+    status: 'awaiting_customer',
+    
+    quoted_at: '2024-12-03T14:00:00Z',
+    quoted_by: 'user-001',
+    customer_notified_at: '2024-12-03T14:30:00Z',
+    
+    payment_status: 'unpaid',
+    payment_required: true,
+    
+    admin_notes: 'ส่งใบเสนอราคาให้ลูกค้าแล้ว รอตอบกลับ',
+    
+    order: {
+      order_number: 'ORD-2024-0003',
+      customer_name: 'โรงเรียนสวนกุหลาบ',
+      status: 'pending',
+    },
+    
+    created_at: '2024-12-03T10:00:00Z',
+    updated_at: '2024-12-03T14:30:00Z',
+  },
+  {
+    id: 'cr-003',
+    request_number: 'CR-2024-0003',
+    order_id: 'order-001',
+    order_number: 'ORD-2024-0001',
+    
+    order_phase: 'in_production',
+    change_type: 'add_work',
+    change_category: 'customer_request',
+    
+    title: 'เพิ่มปักชื่อพนักงาน',
+    description: 'ลูกค้าขอเพิ่มงานปักชื่อพนักงานที่หน้าอกซ้าย',
+    customer_reason: 'ลืมใส่ตอนสั่ง',
+    
+    affected_work_items: [],
+    
+    impact: {
+      production_already_started: true,
+      produced_qty: 20,
+      waste_qty: 0,
+      materials_ordered: true,
+      materials_received: true,
+      material_waste_cost: 0,
+      designs_approved: true,
+      design_rework_required: false,
+      affects_due_date: true,
+      delay_days: 3,
+      affects_other_orders: false,
+      impact_level: 'medium',
+      impact_description: 'ต้องหยุดผลิตเพื่อเพิ่มงานปัก',
+    },
+    
+    fees: {
+      base_fee: 100,
+      design_fee: 0,
+      rework_fee: 400, // งานที่ผลิตไปแล้ว 20 ตัว
+      material_fee: 0,
+      waste_fee: 0,
+      rush_fee: 0,
+      other_fee: 2500, // ค่าปัก 50 ตัว x 50 บาท
+      other_fee_description: 'ค่าปักชื่อ 50 ตัว x ฿50',
+      discount: 0,
+      total_fee: 3000,
+    },
+    
+    days_delayed: 3,
+    original_due_date: '2024-12-11',
+    new_due_date: '2024-12-14',
+    
+    status: 'pending_quote',
+    
+    payment_status: 'unpaid',
+    payment_required: true,
+    
+    internal_notes: 'รอคำนวณค่าใช้จ่ายจากฝ่ายผลิต',
+    
+    order: {
+      order_number: 'ORD-2024-0001',
+      customer_name: 'บริษัท ABC จำกัด',
+      status: 'in_production',
+    },
+    
+    created_at: '2024-12-04T08:00:00Z',
+    updated_at: '2024-12-04T08:00:00Z',
+  },
+];
+
+export const mockChangeRequestLogs: ChangeRequestLog[] = [
+  {
+    id: 'crlog-001',
+    change_request_id: 'cr-001',
+    action: 'created',
+    to_status: 'pending_quote',
+    notes: 'สร้างคำขอเปลี่ยนแปลง',
+    performed_by: 'user-001',
+    performed_at: '2024-12-01T09:00:00Z',
+    created_at: '2024-12-01T09:00:00Z',
+  },
+  {
+    id: 'crlog-002',
+    change_request_id: 'cr-001',
+    action: 'quoted',
+    from_status: 'pending_quote',
+    to_status: 'awaiting_customer',
+    notes: 'ส่งใบเสนอราคา ฿200',
+    performed_by: 'user-001',
+    performed_at: '2024-12-01T10:00:00Z',
+    created_at: '2024-12-01T10:00:00Z',
+  },
+  {
+    id: 'crlog-003',
+    change_request_id: 'cr-001',
+    action: 'customer_accepted',
+    from_status: 'awaiting_customer',
+    to_status: 'awaiting_payment',
+    notes: 'ลูกค้ายืนยันรับทราบ',
+    performed_at: '2024-12-01T11:00:00Z',
+    created_at: '2024-12-01T11:00:00Z',
+  },
+  {
+    id: 'crlog-004',
+    change_request_id: 'cr-001',
+    action: 'payment_received',
+    from_status: 'awaiting_payment',
+    to_status: 'in_progress',
+    details: { amount: 200, reference: 'PAY-CR-001' },
+    notes: 'รับชำระเงินแล้ว',
+    performed_by: 'user-001',
+    performed_at: '2024-12-01T11:30:00Z',
+    created_at: '2024-12-01T11:30:00Z',
+  },
+  {
+    id: 'crlog-005',
+    change_request_id: 'cr-001',
+    action: 'completed',
+    from_status: 'in_progress',
+    to_status: 'completed',
+    notes: 'แก้ไขเสร็จสิ้น',
+    performed_by: 'user-002',
+    performed_at: '2024-12-01T14:00:00Z',
+    created_at: '2024-12-01T14:00:00Z',
+  },
+];
+
+// Change Request Stats Helper
+export function getChangeRequestStats(): ChangeRequestStats {
+  const requests = mockChangeRequests;
+  const pendingStatuses = ['pending_quote', 'awaiting_customer', 'awaiting_payment', 'in_progress'];
+  
+  return {
+    total_requests: requests.length,
+    pending_requests: requests.filter(r => pendingStatuses.includes(r.status)).length,
+    awaiting_customer: requests.filter(r => r.status === 'awaiting_customer').length,
+    total_fees_quoted: requests.reduce((sum, r) => sum + r.fees.total_fee, 0),
+    total_fees_collected: requests.filter(r => r.payment_status === 'paid').reduce((sum, r) => sum + r.fees.total_fee, 0),
+    avg_resolution_days: 1.5,
+  };
+}
+
+// =============================================
+// PHASE 5: QC MOCK DATA
+// =============================================
+
+import type {
+  QCRecord,
+  QCCheckpoint,
+  QCStats,
+  QCStageConfig,
+  DefectType,
+} from '../types/qc';
+
+export const mockQCStageConfigs: QCStageConfig[] = [
+  {
+    id: 'qc-stage-material',
+    code: 'material',
+    name: 'Material Inspection',
+    name_th: 'ตรวจวัตถุดิบ',
+    stage_order: 1,
+    is_mandatory: true,
+    description: 'ตรวจสอบคุณภาพวัตถุดิบก่อนเข้าผลิต',
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'qc-stage-pre',
+    code: 'pre_production',
+    name: 'Pre-Production',
+    name_th: 'ก่อนผลิต',
+    stage_order: 2,
+    is_mandatory: true,
+    description: 'ตรวจสอบความพร้อมก่อนเริ่มผลิต',
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'qc-stage-inline',
+    code: 'in_process',
+    name: 'In-Process',
+    name_th: 'ระหว่างผลิต',
+    stage_order: 3,
+    is_mandatory: false,
+    applies_to_work_types: ['dtf', 'silkscreen', 'embroidery'],
+    description: 'ตรวจสอบระหว่างกระบวนการผลิต',
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'qc-stage-post',
+    code: 'post_production',
+    name: 'Post-Production',
+    name_th: 'หลังผลิต',
+    stage_order: 4,
+    is_mandatory: true,
+    description: 'ตรวจสอบหลังผลิตเสร็จ',
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'qc-stage-final',
+    code: 'final',
+    name: 'Final Inspection',
+    name_th: 'ตรวจสอบขั้นสุดท้าย',
+    stage_order: 5,
+    is_mandatory: true,
+    description: 'ตรวจสอบก่อนส่งมอบ',
+    created_at: '2024-01-01T00:00:00Z',
+  },
+];
+
+export const mockDefectTypes: DefectType[] = [
+  { id: 'defect-001', code: 'print_blur', name: 'Print Blur', name_th: 'พิมพ์เบลอ', category: 'printing', severity: 'major', is_active: true, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'defect-002', code: 'print_crack', name: 'Print Crack', name_th: 'พิมพ์แตก', category: 'printing', severity: 'critical', is_active: true, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'defect-003', code: 'color_mismatch', name: 'Color Mismatch', name_th: 'สีไม่ตรง', category: 'printing', severity: 'major', is_active: true, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'defect-004', code: 'position_wrong', name: 'Wrong Position', name_th: 'ตำแหน่งผิด', category: 'printing', severity: 'critical', is_active: true, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'defect-005', code: 'fabric_stain', name: 'Fabric Stain', name_th: 'ผ้าเปื้อน', category: 'material', severity: 'minor', is_active: true, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'defect-006', code: 'fabric_hole', name: 'Fabric Hole', name_th: 'ผ้าเป็นรู', category: 'material', severity: 'critical', is_active: true, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'defect-007', code: 'size_wrong', name: 'Wrong Size', name_th: 'ไซส์ผิด', category: 'garment', severity: 'critical', is_active: true, created_at: '2024-01-01T00:00:00Z' },
+  { id: 'defect-008', code: 'seam_loose', name: 'Loose Seam', name_th: 'ตะเข็บหลุด', category: 'garment', severity: 'major', is_active: true, created_at: '2024-01-01T00:00:00Z' },
+];
+
+export const mockQCRecords: QCRecord[] = [
+  {
+    id: 'qc-001',
+    job_id: 'job-001',
+    order_id: 'order-001',
+    order_work_item_id: 'wi-001',
+    
+    qc_stage_code: 'post_production',
+    qc_stage_name: 'หลังผลิต',
+    
+    total_qty: 50,
+    checked_qty: 50,
+    passed_qty: 48,
+    failed_qty: 2,
+    rework_qty: 2,
+    
+    overall_result: 'pass_with_rework',
+    pass_rate: 96,
+    
+    checklist_results: [
+      { checkpoint_code: 'print_quality', checkpoint_name: 'คุณภาพงานพิมพ์', checkpoint_name_th: 'คุณภาพงานพิมพ์', is_required: true, passed: true },
+      { checkpoint_code: 'color_accuracy', checkpoint_name: 'ความถูกต้องของสี', checkpoint_name_th: 'ความถูกต้องของสี', is_required: true, passed: true },
+      { checkpoint_code: 'position_accuracy', checkpoint_name: 'ตำแหน่งงานพิมพ์', checkpoint_name_th: 'ตำแหน่งงานพิมพ์', is_required: true, passed: true },
+      { checkpoint_code: 'adhesion_test', checkpoint_name: 'การยึดติดของหมึก', checkpoint_name_th: 'การยึดติดของหมึก', is_required: true, passed: true },
+      { 
+        checkpoint_code: 'overall_appearance', 
+        checkpoint_name: 'สภาพโดยรวม', 
+        checkpoint_name_th: 'สภาพโดยรวม', 
+        is_required: true, 
+        passed: false,
+        notes: 'พบ 2 ตัวมีรอยเปื้อน',
+        defect_type: 'fabric_stain',
+        defect_severity: 'minor',
+      },
+    ],
+    
+    photo_urls: ['https://storage.example.com/qc/qc-001-1.jpg'],
+    notes: 'พบ 2 ตัวมีรอยเปื้อน ส่งซักใหม่',
+    failure_reasons: ['fabric_stain'],
+    rework_instructions: 'ส่งซักทำความสะอาดใหม่',
+    
+    actions_taken: [
+      { action_type: 'pass', quantity: 48, reason: 'ผ่านทุกรายการ' },
+      { action_type: 'rework', quantity: 2, reason: 'รอยเปื้อน', rework_instructions: 'ส่งซักใหม่' },
+    ],
+    
+    started_at: '2024-12-03T09:00:00Z',
+    completed_at: '2024-12-03T10:30:00Z',
+    
+    checked_by: 'user-003',
+    checked_at: '2024-12-03T10:30:00Z',
+    
+    follow_up_required: true,
+    follow_up_notes: 'ตรวจสอบหลังซักใหม่',
+    
+    checker: { id: 'user-003', name: 'พนักงาน QC' },
+    job: { job_number: 'JOB-2024-0001', work_type_code: 'dtf' },
+    order: { order_number: 'ORD-2024-0001', customer_name: 'บริษัท ABC จำกัด' },
+    
+    created_at: '2024-12-03T10:30:00Z',
+    updated_at: '2024-12-03T10:30:00Z',
+  },
+  {
+    id: 'qc-002',
+    job_id: 'job-003',
+    order_id: 'order-002',
+    order_work_item_id: 'wi-003',
+    
+    qc_stage_code: 'final',
+    qc_stage_name: 'ตรวจสอบขั้นสุดท้าย',
+    
+    total_qty: 100,
+    checked_qty: 100,
+    passed_qty: 100,
+    failed_qty: 0,
+    rework_qty: 0,
+    
+    overall_result: 'pass',
+    pass_rate: 100,
+    
+    checklist_results: [
+      { checkpoint_code: 'print_quality', checkpoint_name: 'คุณภาพงานพิมพ์', is_required: true, passed: true },
+      { checkpoint_code: 'color_accuracy', checkpoint_name: 'ความถูกต้องของสี', is_required: true, passed: true },
+      { checkpoint_code: 'position_accuracy', checkpoint_name: 'ตำแหน่งงานพิมพ์', is_required: true, passed: true },
+      { checkpoint_code: 'packaging', checkpoint_name: 'บรรจุภัณฑ์', is_required: true, passed: true },
+      { checkpoint_code: 'quantity_count', checkpoint_name: 'จำนวนถูกต้อง', is_required: true, passed: true },
+    ],
+    
+    notes: 'ผ่านทุกรายการ พร้อมส่ง',
+    
+    actions_taken: [
+      { action_type: 'pass', quantity: 100, reason: 'ผ่านทุกรายการ พร้อมส่งมอบ' },
+    ],
+    
+    started_at: '2024-12-02T14:00:00Z',
+    completed_at: '2024-12-02T15:00:00Z',
+    
+    checked_by: 'user-003',
+    checked_at: '2024-12-02T15:00:00Z',
+    
+    follow_up_required: false,
+    
+    checker: { id: 'user-003', name: 'พนักงาน QC' },
+    job: { job_number: 'JOB-2024-0003', work_type_code: 'dtf' },
+    order: { order_number: 'ORD-2024-0002', customer_name: 'คุณวิภา ใจดี' },
+    
+    created_at: '2024-12-02T15:00:00Z',
+    updated_at: '2024-12-02T15:00:00Z',
+  },
+  {
+    id: 'qc-003',
+    job_id: 'job-004',
+    order_id: 'order-003',
+    
+    qc_stage_code: 'material',
+    qc_stage_name: 'ตรวจวัตถุดิบ',
+    
+    total_qty: 200,
+    checked_qty: 200,
+    passed_qty: 195,
+    failed_qty: 5,
+    rework_qty: 0,
+    
+    overall_result: 'pass_with_rework',
+    pass_rate: 97.5,
+    
+    checklist_results: [
+      { checkpoint_code: 'fabric_quality', checkpoint_name: 'คุณภาพผ้า', is_required: true, passed: true },
+      { checkpoint_code: 'color_match', checkpoint_name: 'สีตรงตาม PO', is_required: true, passed: true },
+      { 
+        checkpoint_code: 'no_defects', 
+        checkpoint_name: 'ไม่มีตำหนิ', 
+        is_required: true, 
+        passed: false,
+        notes: 'พบผ้ามีรู 5 ตัว',
+        defect_type: 'fabric_hole',
+        defect_severity: 'critical',
+      },
+      { checkpoint_code: 'size_correct', checkpoint_name: 'ไซส์ถูกต้อง', is_required: true, passed: true },
+    ],
+    
+    notes: 'พบผ้ามีตำหนิ 5 ตัว ส่งคืน supplier',
+    failure_reasons: ['fabric_hole'],
+    
+    actions_taken: [
+      { action_type: 'pass', quantity: 195, reason: 'ผ่านทุกรายการ' },
+      { action_type: 'reject', quantity: 5, reason: 'ผ้าเป็นรู - ส่งคืน supplier' },
+    ],
+    
+    started_at: '2024-12-03T08:00:00Z',
+    completed_at: '2024-12-03T08:45:00Z',
+    
+    checked_by: 'user-003',
+    checked_at: '2024-12-03T08:45:00Z',
+    
+    follow_up_required: true,
+    follow_up_notes: 'รอ supplier ส่งทดแทน 5 ตัว',
+    
+    checker: { id: 'user-003', name: 'พนักงาน QC' },
+    order: { order_number: 'ORD-2024-0003', customer_name: 'โรงเรียนสวนกุหลาบ' },
+    
+    created_at: '2024-12-03T08:45:00Z',
+    updated_at: '2024-12-03T08:45:00Z',
+  },
+];
+
+// QC Stats Helper
+export function getQCStats(): QCStats {
+  const records = mockQCRecords;
+  const totalChecked = records.reduce((sum, r) => sum + r.checked_qty, 0);
+  const totalPassed = records.reduce((sum, r) => sum + r.passed_qty, 0);
+  
+  return {
+    total_records: records.length,
+    pending_qc: 2, // mock
+    failed_today: records.filter(r => r.failed_qty > 0).length,
+    rework_in_progress: records.filter(r => r.rework_qty > 0 && r.follow_up_required).length,
+    avg_pass_rate: totalChecked > 0 ? Math.round((totalPassed / totalChecked) * 100) : 0,
+    avg_check_time_minutes: 45,
+  };
+}
+
+// Get QC Records for Order
+export function getQCRecordsForOrder(orderId: string): QCRecord[] {
+  return mockQCRecords.filter(r => r.order_id === orderId);
+}
+
+// Get QC Records for Job
+export function getQCRecordsForJob(jobId: string): QCRecord[] {
+  return mockQCRecords.filter(r => r.job_id === jobId);
+}
+
