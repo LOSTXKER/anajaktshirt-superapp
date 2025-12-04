@@ -47,6 +47,7 @@ import { CostBreakdown } from '@/modules/orders/components/CostBreakdown';
 import { SLATimeline } from '@/modules/orders/components/SLATimeline';
 import { DocumentGenerator } from '@/modules/orders/components/DocumentGenerator';
 import { NotificationCenter } from '@/modules/orders/components/NotificationCenter';
+import { OrderEvents } from '@/modules/orders/components/OrderEvents';
 
 // Order Progress Steps Configuration with Actions
 const ORDER_STEPS = [
@@ -351,7 +352,7 @@ export default function OrderDetailPage() {
   } = useOrderMutations();
 
   // UI State
-  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'design' | 'mockup' | 'payments' | 'production' | 'cost' | 'timeline' | 'documents' | 'notifications' | 'notes' | 'history'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'design' | 'mockup' | 'payments' | 'production' | 'cost' | 'timeline' | 'events' | 'documents' | 'notifications' | 'notes' | 'history'>('details');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
   const [statusReason, setStatusReason] = useState('');
@@ -626,6 +627,7 @@ export default function OrderDetailPage() {
           { key: 'payments', label: 'การชำระเงิน', icon: DollarSign },
           { key: 'cost', label: 'ต้นทุน', icon: Calculator },
           { key: 'timeline', label: 'Timeline', icon: Calendar },
+          { key: 'events', label: 'เหตุการณ์', icon: AlertCircle },
           { key: 'documents', label: 'เอกสาร', icon: FileText },
           { key: 'notifications', label: 'แจ้งเตือน', icon: Bell },
           { key: 'notes', label: 'หมายเหตุ', icon: MessageSquare },
@@ -1087,6 +1089,23 @@ export default function OrderDetailPage() {
             onSave={(timeline) => {
               // TODO: Save timeline to database
               console.log('Saving timeline:', timeline);
+            }}
+          />
+        )}
+
+        {/* Events Tab */}
+        {activeTab === 'events' && (
+          <OrderEvents
+            order={order as Order}
+            onAddEvent={async (event) => {
+              // TODO: Save event to database
+              console.log('Adding event:', event);
+              return true;
+            }}
+            onResolveEvent={async (eventId, resolution) => {
+              // TODO: Update event in database
+              console.log('Resolving event:', eventId, resolution);
+              return true;
             }}
           />
         )}
