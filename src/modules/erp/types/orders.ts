@@ -581,14 +581,19 @@ export interface OrderFilters extends BaseFilters {
 // ---------------------------------------------
 
 export interface OrderStats {
-  total_orders: number;
-  total_revenue: number;
-  pending_orders: number;
+  // Counts
+  total: number;
+  pending: number;
   in_production: number;
   ready_to_ship: number;
-  completed_this_month: number;
-  overdue_orders: number;
-  avg_order_value: number;
+  completed: number;
+  completed_today: number;
+  overdue: number;
+  
+  // Revenue
+  total_revenue: number;
+  paid_revenue: number;
+  outstanding_revenue: number;
 }
 
 export interface OrderSummary {

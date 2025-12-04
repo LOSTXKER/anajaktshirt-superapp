@@ -5,11 +5,20 @@ import type { Tables } from '@/lib/supabase';
 import type {
   Supplier,
   PurchaseOrder,
-  PurchaseOrderItem,
+  SupplierStats,
+  SupplierFilters,
+  CreateSupplierInput,
+  UpdateSupplierInput,
+  CreatePurchaseOrderInput,
+  ReceiveGoodsInput,
 } from '../../types';
-import type { Pagination } from '../../types/common';
+import type { ISupplierRepository } from '../../services/repository';
+import type { PaginationParams, PaginatedResult, ActionResult } from '../../types/common';
 
-// Helper to convert DB row to Supplier type
+// =============================================
+// HELPER FUNCTIONS
+// =============================================
+
 function dbToSupplier(row: Tables<'suppliers'>): Supplier {
   return {
     id: row.id,
@@ -18,16 +27,15 @@ function dbToSupplier(row: Tables<'suppliers'>): Supplier {
     phone: row.phone,
     email: row.email,
     address: row.address,
-    service_types: row.service_types,
+    service_types: row.service_types || [],
     rating: row.rating,
     is_active: row.is_active,
     notes: row.notes,
     created_at: row.created_at,
     updated_at: row.updated_at,
-  };
+  } as Supplier;
 }
 
-// Helper to convert DB row to PurchaseOrder type
 function dbToPurchaseOrder(row: Tables<'purchase_orders'> & {
   supplier?: Tables<'suppliers'> | null;
   items?: Tables<'purchase_order_items'>[];
@@ -57,17 +65,21 @@ function dbToPurchaseOrder(row: Tables<'purchase_orders'> & {
       work_item_id: i.work_item_id,
       created_at: i.created_at,
     })) || [],
-  };
+  } as PurchaseOrder;
 }
 
-export class SupabaseSupplierRepository {
+// =============================================
+// SUPABASE SUPPLIER REPOSITORY
+// =============================================
+
+export class SupabaseSupplierRepository implements ISupplierRepository {
   private get supabase() {
     return getSupabaseClient();
   }
 
-  // ==================== SUPPLIERS ====================
+  // ==================== SUPPLIER CRUD ====================
 
-  async findSupplierById(id: string): Promise<Supplier | null> {
+  async findById(id: string): Promise<Supplier | null> {
     const { data, error } = await this.supabase
       .from('suppliers')
       .select('*')
@@ -78,24 +90,47 @@ export class SupabaseSupplierRepository {
     return dbToSupplier(data);
   }
 
-  async findSuppliers(
-    filters?: {
-      search?: string;
-      service_type?: string;
-      is_active?: boolean;
-    },
-    pagination?: Pagination
-  ): Promise<{ data: Supplier[]; totalCount: number }> {
+  async findByCode(code: string): Promise<Supplier | null> {
+    // Assuming there's a code field, or use name as fallback
+    const { data, error } = await this.supabase
+      .from('suppliers')
+      .select('*')
+      .eq('name', code) // Use name as code for now
+      .single();
+
+    if (error || !data) return null;
+    return dbToSupplier(data);
+  }
+
+  async getByServiceType(serviceType: string): Promise<Supplier[]> {
+    const { data, error } = await this.supabase
+      .from('suppliers')
+      .select('*')
+      .contains('service_types', [serviceType])
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Error fetching suppliers by service type:', error);
+      return [];
+    }
+
+    return (data || []).map(dbToSupplier);
+  }
+
+  async findMany(
+    filters?: SupplierFilters,
+    pagination?: PaginationParams
+  ): Promise<PaginatedResult<Supplier>> {
     let query = this.supabase
       .from('suppliers')
       .select('*', { count: 'exact' });
 
     // Apply filters
-    if (filters?.is_active !== undefined) {
-      query = query.eq('is_active', filters.is_active);
+    if (filters?.status) {
+      query = query.eq('is_active', filters.status === 'active');
     }
-    if (filters?.service_type) {
-      query = query.contains('service_types', [filters.service_type]);
+    if (filters?.service_types && filters.service_types.length > 0) {
+      query = query.overlaps('service_types', filters.service_types);
     }
     if (filters?.search) {
       query = query.or(`name.ilike.%${filters.search}%,contact_name.ilike.%${filters.search}%`);
@@ -105,29 +140,48 @@ export class SupabaseSupplierRepository {
     query = query.order('name');
 
     // Apply pagination
-    if (pagination) {
-      const start = pagination.page * pagination.pageSize;
-      const end = start + pagination.pageSize - 1;
-      query = query.range(start, end);
-    }
+    const page = pagination?.page || 0;
+    const pageSize = pagination?.pageSize || 20;
+    const start = page * pageSize;
+    const end = start + pageSize - 1;
+    query = query.range(start, end);
 
     const { data, error, count } = await query;
 
     if (error) {
       console.error('Error fetching suppliers:', error);
-      return { data: [], totalCount: 0 };
+      return {
+        data: [],
+        pagination: { page, pageSize, totalCount: 0, totalPages: 0 },
+      };
     }
 
+    const totalCount = count || 0;
     return {
       data: (data || []).map(dbToSupplier),
-      totalCount: count || 0,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
     };
   }
 
-  async createSupplier(input: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>): Promise<{ success: boolean; data?: Supplier; message?: string }> {
+  async create(input: CreateSupplierInput): Promise<ActionResult<Supplier>> {
     const { data, error } = await this.supabase
       .from('suppliers')
-      .insert(input)
+      .insert({
+        name: input.name,
+        contact_name: input.contact_name,
+        phone: input.contact_phone,
+        email: input.contact_email,
+        address: input.address,
+        service_types: input.service_types || [],
+        is_active: true,
+        rating: 0,
+        notes: input.notes,
+      })
       .select()
       .single();
 
@@ -139,13 +193,23 @@ export class SupabaseSupplierRepository {
     return { success: true, data: dbToSupplier(data) };
   }
 
-  async updateSupplier(id: string, input: Partial<Supplier>): Promise<{ success: boolean; data?: Supplier; message?: string }> {
+  async update(id: string, input: UpdateSupplierInput): Promise<ActionResult<Supplier>> {
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.contact_name !== undefined) updateData.contact_name = input.contact_name;
+    if (input.contact_phone !== undefined) updateData.phone = input.contact_phone;
+    if (input.contact_email !== undefined) updateData.email = input.contact_email;
+    if (input.address !== undefined) updateData.address = input.address;
+    if (input.service_types !== undefined) updateData.service_types = input.service_types;
+    if (input.notes !== undefined) updateData.notes = input.notes;
+    if (input.status !== undefined) updateData.is_active = input.status === 'active';
+
     const { data, error } = await this.supabase
       .from('suppliers')
-      .update({
-        ...input,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
@@ -158,7 +222,7 @@ export class SupabaseSupplierRepository {
     return { success: true, data: dbToSupplier(data) };
   }
 
-  async deleteSupplier(id: string): Promise<{ success: boolean; message?: string }> {
+  async delete(id: string): Promise<ActionResult> {
     const { error } = await this.supabase
       .from('suppliers')
       .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -174,7 +238,7 @@ export class SupabaseSupplierRepository {
 
   // ==================== PURCHASE ORDERS ====================
 
-  async findPurchaseOrderById(id: string): Promise<PurchaseOrder | null> {
+  async getPurchaseOrders(supplierId: string): Promise<PurchaseOrder[]> {
     const { data, error } = await this.supabase
       .from('purchase_orders')
       .select(`
@@ -182,74 +246,25 @@ export class SupabaseSupplierRepository {
         supplier:suppliers(*),
         items:purchase_order_items(*)
       `)
-      .eq('id', id)
-      .single();
-
-    if (error || !data) return null;
-    return dbToPurchaseOrder(data);
-  }
-
-  async findPurchaseOrders(
-    filters?: {
-      supplier_id?: string;
-      order_id?: string;
-      status?: string | string[];
-      search?: string;
-    },
-    pagination?: Pagination
-  ): Promise<{ data: PurchaseOrder[]; totalCount: number }> {
-    let query = this.supabase
-      .from('purchase_orders')
-      .select(`
-        *,
-        supplier:suppliers(*),
-        items:purchase_order_items(*)
-      `, { count: 'exact' });
-
-    // Apply filters
-    if (filters?.supplier_id) {
-      query = query.eq('supplier_id', filters.supplier_id);
-    }
-    if (filters?.order_id) {
-      query = query.eq('order_id', filters.order_id);
-    }
-    if (filters?.status) {
-      if (Array.isArray(filters.status)) {
-        query = query.in('status', filters.status);
-      } else {
-        query = query.eq('status', filters.status);
-      }
-    }
-    if (filters?.search) {
-      query = query.or(`po_number.ilike.%${filters.search}%`);
-    }
-
-    // Apply sorting
-    query = query.order('created_at', { ascending: false });
-
-    // Apply pagination
-    if (pagination) {
-      const start = pagination.page * pagination.pageSize;
-      const end = start + pagination.pageSize - 1;
-      query = query.range(start, end);
-    }
-
-    const { data, error, count } = await query;
+      .eq('supplier_id', supplierId)
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching purchase orders:', error);
-      return { data: [], totalCount: 0 };
+      return [];
     }
 
-    return {
-      data: (data || []).map(dbToPurchaseOrder),
-      totalCount: count || 0,
-    };
+    return (data || []).map(dbToPurchaseOrder);
   }
 
-  async createPurchaseOrder(input: Omit<PurchaseOrder, 'id' | 'po_number' | 'created_at' | 'updated_at'>): Promise<{ success: boolean; data?: PurchaseOrder; message?: string }> {
-    // Generate PO number
+  async createPurchaseOrder(input: CreatePurchaseOrderInput): Promise<ActionResult<PurchaseOrder>> {
     const poNumber = `PO-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+
+    // Calculate total
+    const totalAmount = input.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
+      + (input.setup_fees || 0)
+      + (input.shipping_cost || 0)
+      - (input.discount || 0);
 
     const { data, error } = await this.supabase
       .from('purchase_orders')
@@ -257,16 +272,12 @@ export class SupabaseSupplierRepository {
         po_number: poNumber,
         supplier_id: input.supplier_id,
         order_id: input.order_id,
-        status: input.status || 'draft',
-        total_amount: input.total_amount || 0,
-        notes: input.notes,
+        status: 'draft',
+        total_amount: totalAmount,
         expected_date: input.expected_date,
-        created_by: input.created_by,
+        notes: input.internal_notes,
       })
-      .select(`
-        *,
-        supplier:suppliers(*)
-      `)
+      .select(`*, supplier:suppliers(*)`)
       .single();
 
     if (error) {
@@ -274,38 +285,39 @@ export class SupabaseSupplierRepository {
       return { success: false, message: error.message };
     }
 
-    // Create items if provided
+    // Create items
     if (input.items && input.items.length > 0) {
       const itemsToInsert = input.items.map(item => ({
         purchase_order_id: data.id,
-        description: item.description,
+        description: item.item_description,
         quantity: item.quantity,
         unit_price: item.unit_price,
-        total_price: item.total_price,
+        total_price: item.quantity * item.unit_price,
         received_qty: 0,
-        work_item_id: item.work_item_id,
+        work_item_id: item.order_work_item_id,
       }));
 
-      await this.supabase
-        .from('purchase_order_items')
-        .insert(itemsToInsert);
+      await this.supabase.from('purchase_order_items').insert(itemsToInsert);
     }
 
-    return { success: true, data: dbToPurchaseOrder({ ...data, items: input.items || [] }) };
+    return { success: true, data: dbToPurchaseOrder({ ...data, items: [] }) };
   }
 
-  async updatePurchaseOrder(id: string, input: Partial<PurchaseOrder>): Promise<{ success: boolean; data?: PurchaseOrder; message?: string }> {
+  async updatePurchaseOrder(poId: string, input: Partial<PurchaseOrder>): Promise<ActionResult<PurchaseOrder>> {
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.status !== undefined) updateData.status = input.status;
+    if (input.total_amount !== undefined) updateData.total_amount = input.total_amount;
+    if (input.notes !== undefined) updateData.notes = input.notes;
+    if (input.expected_date !== undefined) updateData.expected_date = input.expected_date;
+    if (input.received_date !== undefined) updateData.received_date = input.received_date;
+
     const { data, error } = await this.supabase
       .from('purchase_orders')
-      .update({
-        status: input.status,
-        total_amount: input.total_amount,
-        notes: input.notes,
-        expected_date: input.expected_date,
-        received_date: input.received_date,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
+      .update(updateData)
+      .eq('id', poId)
       .select(`
         *,
         supplier:suppliers(*),
@@ -321,9 +333,93 @@ export class SupabaseSupplierRepository {
     return { success: true, data: dbToPurchaseOrder(data) };
   }
 
+  async sendPurchaseOrder(poId: string): Promise<ActionResult> {
+    const { error } = await this.supabase
+      .from('purchase_orders')
+      .update({
+        status: 'sent',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', poId);
+
+    if (error) {
+      console.error('Error sending purchase order:', error);
+      return { success: false, message: error.message };
+    }
+
+    return { success: true };
+  }
+
+  async confirmPurchaseOrder(poId: string): Promise<ActionResult> {
+    const { error } = await this.supabase
+      .from('purchase_orders')
+      .update({
+        status: 'confirmed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', poId);
+
+    if (error) {
+      console.error('Error confirming purchase order:', error);
+      return { success: false, message: error.message };
+    }
+
+    return { success: true };
+  }
+
+  async receiveGoods(input: ReceiveGoodsInput): Promise<ActionResult> {
+    // Update PO items with received quantities
+    for (const item of input.items) {
+      const { error } = await this.supabase
+        .from('purchase_order_items')
+        .update({
+          received_qty: item.received_qty,
+        })
+        .eq('id', item.po_item_id);
+
+      if (error) {
+        console.error('Error updating received qty:', error);
+        return { success: false, message: error.message };
+      }
+    }
+
+    // Check if all items are fully received
+    const { data: items } = await this.supabase
+      .from('purchase_order_items')
+      .select('quantity, received_qty')
+      .eq('purchase_order_id', input.po_id);
+
+    const allReceived = (items || []).every(i => i.received_qty >= i.quantity);
+    const someReceived = (items || []).some(i => i.received_qty > 0);
+
+    // Update PO status
+    let newStatus = 'confirmed';
+    if (allReceived) {
+      newStatus = 'received';
+    } else if (someReceived) {
+      newStatus = 'partial';
+    }
+
+    const { error } = await this.supabase
+      .from('purchase_orders')
+      .update({
+        status: newStatus,
+        received_date: allReceived ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', input.po_id);
+
+    if (error) {
+      console.error('Error updating PO status:', error);
+      return { success: false, message: error.message };
+    }
+
+    return { success: true };
+  }
+
   // ==================== STATISTICS ====================
 
-  async getStats(): Promise<import('../../types/suppliers').SupplierStats> {
+  async getStats(): Promise<SupplierStats> {
     const { count: total_suppliers } = await this.supabase
       .from('suppliers')
       .select('*', { count: 'exact', head: true });
@@ -345,9 +441,7 @@ export class SupabaseSupplierRepository {
       .lt('expected_date', now)
       .not('status', 'in', '(received,cancelled)');
 
-    // Calculate total outstanding (amount for non-cancelled, non-draft POs - maybe?)
-    // Or maybe just total amount of pending POs.
-    // Let's assume total_outstanding matches pending_amount in dashboard which usually means unpaid or pending POs value.
+    // Calculate total outstanding
     const { data: poData } = await this.supabase
       .from('purchase_orders')
       .select('total_amount')
@@ -367,4 +461,3 @@ export class SupabaseSupplierRepository {
 
 // Export singleton instance
 export const supabaseSupplierRepository = new SupabaseSupplierRepository();
-

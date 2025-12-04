@@ -53,11 +53,9 @@ const DEFAULT_STATS: DashboardStats = {
     completed: 0,
     completed_today: 0,
     overdue: 0,
-    revenue: {
-      total: 0,
-      paid: 0,
-      outstanding: 0,
-    },
+    total_revenue: 0,
+    paid_revenue: 0,
+    outstanding_revenue: 0,
   },
   production: {
     total_jobs: 0,
@@ -85,11 +83,9 @@ const DEFAULT_STATS: DashboardStats = {
 };
 
 export function useERPDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null); // Allow null initially
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // TODO: Implement real data fetching for activities and deadlines
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<Deadline[]>([]);
 
@@ -98,7 +94,7 @@ export function useERPDashboard() {
       setLoading(true);
 
       const [orderStats, productionStats, supplierStats, financialSummary] = await Promise.all([
-        supabaseOrderRepository.getOrderStats(),
+        supabaseOrderRepository.getStats(),
         supabaseProductionRepository.getStats(),
         supabaseSupplierRepository.getStats(),
         supabaseFinancialRepository.getSummary(),
@@ -109,49 +105,39 @@ export function useERPDashboard() {
         production: productionStats,
         suppliers: supplierStats,
         revenue: {
-          today: 0, // TODO: Implement daily revenue
-          this_week: 0, // TODO: Implement weekly revenue
-          this_month: financialSummary.total_revenue,
-          pending_payment: financialSummary.outstanding_amount,
+          today: 0, // TODO: Implement daily revenue calculation
+          this_week: 0, // TODO: Implement weekly revenue calculation
+          this_month: financialSummary.total_revenue || orderStats.total_revenue,
+          pending_payment: financialSummary.outstanding_amount || orderStats.outstanding_revenue,
         },
       });
 
-      // Mock Activities for now until Audit Logs are fully integrated
+      // Mock Activities for now
       setRecentActivities([
         {
           id: '1',
           type: 'order',
-          title: 'คำสั่งซื้อใหม่ #ORD-2023-001',
-          description: 'ลูกค้า: คุณสมชาย (เสื้อยืด 100 ตัว)',
-          timestamp: '10 นาทีที่แล้ว',
-          status: 'success',
-        },
-        {
-          id: '2',
-          type: 'production',
-          title: 'เริ่มผลิตงาน #JOB-001',
-          description: 'สถานี: สกรีน DTF',
-          timestamp: '30 นาทีที่แล้ว',
+          title: 'ระบบพร้อมใช้งาน',
+          description: 'Supabase connected successfully',
+          timestamp: 'เมื่อสักครู่',
           status: 'success',
         },
       ]);
 
-      // Mock Deadlines for now
       setUpcomingDeadlines([]);
 
     } catch (err: any) {
       console.error('Dashboard fetch error:', err);
       setError(err.message);
-      // Fallback to default stats on error to prevent UI crash
-      if (!stats) setStats(DEFAULT_STATS);
+      setStats(DEFAULT_STATS);
     } finally {
       setLoading(false);
     }
-  }, [stats]);
+  }, []);
 
   useEffect(() => {
     fetchDashboardStats();
-  }, []);
+  }, [fetchDashboardStats]);
 
   return {
     stats,

@@ -42,7 +42,7 @@ import type { PaginationParams, PaginatedResult } from '../types/common';
 
 function ensureERPInitialized() {
   if (!isERPInitialized()) {
-    initializeERP('mock');
+    initializeERP('supabase');
   }
 }
 
