@@ -32,11 +32,34 @@ CREATE TABLE IF NOT EXISTS order_notes (
 -- Index for order_notes
 CREATE INDEX IF NOT EXISTS idx_order_notes_order_id ON order_notes(order_id);
 
+-- 2.5 Order Work Items (if not exists) - รายการงาน
+CREATE TABLE IF NOT EXISTS order_work_items (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  work_type_code TEXT,
+  work_type_name TEXT,
+  position_code TEXT,
+  position_name TEXT,
+  print_size_code TEXT,
+  print_size_name TEXT,
+  quantity INTEGER DEFAULT 1,
+  unit_price DECIMAL(10,2) DEFAULT 0,
+  total_price DECIMAL(10,2) DEFAULT 0,
+  description TEXT,
+  status TEXT DEFAULT 'pending',
+  production_job_id UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for order_work_items
+CREATE INDEX IF NOT EXISTS idx_order_work_items_order_id ON order_work_items(order_id);
+
 -- 3. Order Designs - งานออกแบบ
 CREATE TABLE IF NOT EXISTS order_designs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  work_item_id UUID REFERENCES order_work_items(id) ON DELETE CASCADE,
+  work_item_id UUID,
   name TEXT NOT NULL,
   description TEXT,
   position_code TEXT,
@@ -73,8 +96,8 @@ CREATE INDEX IF NOT EXISTS idx_design_versions_design_id ON design_versions(desi
 CREATE TABLE IF NOT EXISTS order_mockups (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  work_item_id UUID REFERENCES order_work_items(id) ON DELETE CASCADE,
-  design_id UUID REFERENCES order_designs(id) ON DELETE SET NULL,
+  work_item_id UUID,
+  design_id UUID,
   name TEXT NOT NULL,
   description TEXT,
   file_url TEXT,
