@@ -93,7 +93,7 @@ END $$;
 -- ==================== CORE TABLES ====================
 
 -- Customers
-CREATE TABLE IF NOT EXISTS IF NOT EXISTS customers (
+CREATE TABLE IF NOT EXISTS customers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   company_name VARCHAR(255),
