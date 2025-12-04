@@ -447,20 +447,65 @@ CREATE TABLE IF NOT EXISTS order_types (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Products (เสื้อเปล่า) - Extended for Stock Module
 CREATE TABLE IF NOT EXISTS products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  sku VARCHAR(50) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  model VARCHAR(100),
+  main_sku VARCHAR(50),             -- SKU หลัก (รหัสสินค้าหลัก)
+  sku VARCHAR(50) UNIQUE NOT NULL,  -- SKU รอง (รหัสเฉพาะ variant)
+  name VARCHAR(255),
+  model VARCHAR(100) NOT NULL,      -- รุ่นเสื้อ
   category VARCHAR(100),
-  color VARCHAR(50),
-  size VARCHAR(20),
-  base_price DECIMAL(10,2) DEFAULT 0,
-  stock_qty INTEGER DEFAULT 0,
+  color VARCHAR(50) NOT NULL,       -- ชื่อสี
+  color_hex VARCHAR(10),            -- Hex code สำหรับแสดงผล
+  size VARCHAR(20) NOT NULL,        -- ไซส์
+  cost DECIMAL(10,2) DEFAULT 0,     -- ต้นทุนต่อหน่วย
+  price DECIMAL(10,2) DEFAULT 0,    -- ราคาขายต่อหน่วย (base_price)
+  quantity INTEGER DEFAULT 0,       -- จำนวนคงเหลือ (stock_qty)
+  min_level INTEGER DEFAULT 10,     -- จุดสั่งซื้อ (Reorder Point)
   is_active BOOLEAN DEFAULT TRUE,
   image_url TEXT,
+  deleted_at TIMESTAMPTZ,           -- Soft delete timestamp
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Stock Transactions (ประวัติรับเข้า/เบิกออก)
+DO $$ BEGIN
+  CREATE TYPE transaction_type AS ENUM ('IN', 'OUT', 'ADJUST');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  type transaction_type NOT NULL,
+  quantity INTEGER NOT NULL,
+  reason_category VARCHAR(50),      -- หมวดหมู่สาเหตุ
+  reason VARCHAR(255),              -- สาเหตุการเบิก
+  note TEXT,
+  ref_order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Stock Reservations (จองของสำหรับ Job)
+DO $$ BEGIN
+  CREATE TYPE reservation_status AS ENUM ('reserved', 'used', 'released');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+CREATE TABLE IF NOT EXISTS stock_reservations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  job_id UUID REFERENCES production_jobs(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL,
+  status reservation_status DEFAULT 'reserved',
+  reserved_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  reserved_at TIMESTAMPTZ DEFAULT NOW(),
+  released_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ==================== USER TABLES ====================
@@ -509,6 +554,12 @@ DROP INDEX IF EXISTS idx_qc_records_production_job_id;
 DROP INDEX IF EXISTS idx_notifications_user_id;
 DROP INDEX IF EXISTS idx_notifications_is_read;
 DROP INDEX IF EXISTS idx_notifications_created_at;
+DROP INDEX IF EXISTS idx_products_model;
+DROP INDEX IF EXISTS idx_products_deleted_at;
+DROP INDEX IF EXISTS idx_transactions_product_id;
+DROP INDEX IF EXISTS idx_transactions_created_at;
+DROP INDEX IF EXISTS idx_reservations_job_id;
+DROP INDEX IF EXISTS idx_reservations_product_id;
 
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);
 CREATE INDEX idx_orders_status ON orders(status);
@@ -534,6 +585,13 @@ CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX idx_notifications_created_at ON notifications(created_at);
 
+CREATE INDEX idx_products_model ON products(model);
+CREATE INDEX idx_products_deleted_at ON products(deleted_at);
+CREATE INDEX idx_transactions_product_id ON transactions(product_id);
+CREATE INDEX idx_transactions_created_at ON transactions(created_at);
+CREATE INDEX idx_reservations_job_id ON stock_reservations(job_id);
+CREATE INDEX idx_reservations_product_id ON stock_reservations(product_id);
+
 -- ==================== ROW LEVEL SECURITY ====================
 
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
@@ -545,6 +603,9 @@ ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_reservations ENABLE ROW LEVEL SECURITY;
 
 -- Basic RLS Policies (Allow all for authenticated users)
 -- In production, you should create more specific policies
@@ -561,6 +622,9 @@ DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
 DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON products;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON transactions;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON stock_reservations;
 
 -- Create policies
 CREATE POLICY "Allow all for authenticated users" ON customers FOR ALL USING (auth.role() = 'authenticated');
@@ -574,6 +638,9 @@ CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.ui
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Allow all for authenticated users" ON products FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow all for authenticated users" ON transactions FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow all for authenticated users" ON stock_reservations FOR ALL USING (auth.role() = 'authenticated');
 
 -- ==================== TRIGGERS ====================
 
@@ -594,6 +661,7 @@ DROP TRIGGER IF EXISTS tr_production_jobs_updated_at ON production_jobs;
 DROP TRIGGER IF EXISTS tr_suppliers_updated_at ON suppliers;
 DROP TRIGGER IF EXISTS tr_purchase_orders_updated_at ON purchase_orders;
 DROP TRIGGER IF EXISTS tr_profiles_updated_at ON profiles;
+DROP TRIGGER IF EXISTS tr_products_updated_at ON products;
 
 CREATE TRIGGER tr_customers_updated_at BEFORE UPDATE ON customers FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER tr_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -603,6 +671,7 @@ CREATE TRIGGER tr_production_jobs_updated_at BEFORE UPDATE ON production_jobs FO
 CREATE TRIGGER tr_suppliers_updated_at BEFORE UPDATE ON suppliers FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER tr_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER tr_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER tr_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Auto-create profile on user signup
 CREATE OR REPLACE FUNCTION handle_new_user()
