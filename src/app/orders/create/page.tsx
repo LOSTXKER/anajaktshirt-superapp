@@ -117,7 +117,7 @@ const STEPS = [
 
 export default function CreateOrderPage() {
   const router = useRouter();
-  const { showSuccess, showError } = useToast();
+  const { success, error: showError } = useToast();
   const { createOrder, creating } = useOrderMutations();
   const { customers } = useCustomers();
   const { products } = useProducts();
@@ -479,7 +479,7 @@ export default function CreateOrderPage() {
       const result = await createOrder(orderData);
       
       if (result) {
-        showSuccess('สร้างออเดอร์สำเร็จ!');
+        success('สร้างออเดอร์สำเร็จ!');
         router.push(`/orders/${result.id}`);
       }
     } catch (error) {
