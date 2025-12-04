@@ -48,16 +48,19 @@ export default function SettingsPage() {
   const [showConfirm, setShowConfirm] = useState<'clear' | 'reset' | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [totalSize, setTotalSize] = useState('0 Bytes');
 
   // Load stats on client-side only
   useEffect(() => {
     setIsClient(true);
     setStorageStats(getStorageStats());
+    setTotalSize(getTotalSize());
   }, []);
 
   const refreshStats = () => {
     if (typeof window !== 'undefined') {
       setStorageStats(getStorageStats());
+      setTotalSize(getTotalSize());
     }
   };
 
@@ -209,7 +212,7 @@ export default function SettingsPage() {
             </div>
             <div className="p-4 bg-[#F5F5F7] rounded-xl">
               <p className="text-sm text-[#86868B]">ขนาดรวม</p>
-              <p className="text-2xl font-bold text-[#1D1D1F]">{getTotalSize()}</p>
+              <p className="text-2xl font-bold text-[#1D1D1F]">{totalSize}</p>
             </div>
           </div>
 
