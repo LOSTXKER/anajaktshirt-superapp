@@ -1,4 +1,3 @@
-// @ts-nocheck - TODO: Fix type mismatches with Supabase schema
 'use client';
 
 import { getSupabaseClient } from '@/lib/supabase';
@@ -88,6 +87,31 @@ function dbToReceipt(row: Tables<'receipts'>): Receipt {
 export class SupabaseFinancialRepository {
   private get supabase() {
     return getSupabaseClient();
+  }
+
+  // Helper to fetch customer data
+  private async fetchCustomer(customerId: string | null): Promise<any> {
+    if (!customerId) return null;
+
+    const { data } = await this.supabase
+      .from('customers')
+      .select('id, name')
+      .eq('id', customerId)
+      .single();
+
+    return data;
+  }
+
+  // Helper to batch fetch customers
+  private async fetchCustomers(customerIds: string[]): Promise<Record<string, any>> {
+    if (customerIds.length === 0) return {};
+
+    const { data } = await this.supabase
+      .from('customers')
+      .select('id, name')
+      .in('id', customerIds);
+
+    return data ? Object.fromEntries(data.map(c => [c.id, c])) : {};
   }
 
   // ==================== FINANCIAL SUMMARY ====================
