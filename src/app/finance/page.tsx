@@ -130,10 +130,10 @@ export default function FinancePage() {
                   <span className="text-xs text-[#86868B]">รายได้รวม</span>
                   <TrendingUp className="w-4 h-4 text-[#34C759]" />
                 </div>
-                <p className="text-2xl font-bold text-[#1D1D1F]">{formatCurrency(summary.revenue.total)}</p>
+                <p className="text-2xl font-bold text-[#1D1D1F]">{formatCurrency(summary.total_revenue)}</p>
                 <p className="text-xs text-[#34C759] mt-1 flex items-center gap-1">
                   <ArrowUpRight className="w-3 h-3" />
-                  +12.5% จากเดือนก่อน
+                  +{summary.revenue_growth_percent}% จากเดือนก่อน
                 </p>
               </Card>
 
@@ -142,9 +142,9 @@ export default function FinancePage() {
                   <span className="text-xs text-[#86868B]">รับชำระแล้ว</span>
                   <CheckCircle2 className="w-4 h-4 text-[#34C759]" />
                 </div>
-                <p className="text-2xl font-bold text-[#34C759]">{formatCurrency(summary.revenue.paid)}</p>
+                <p className="text-2xl font-bold text-[#34C759]">{formatCurrency(summary.total_paid)}</p>
                 <p className="text-xs text-[#86868B] mt-1">
-                  {Math.round((summary.revenue.paid / summary.revenue.total) * 100)}% ของยอดรวม
+                  {summary.total_revenue > 0 ? Math.round((summary.total_paid / summary.total_revenue) * 100) : 0}% ของยอดรวม
                 </p>
               </Card>
 
@@ -153,9 +153,9 @@ export default function FinancePage() {
                   <span className="text-xs text-[#86868B]">รอชำระ</span>
                   <Clock className="w-4 h-4 text-[#FF9500]" />
                 </div>
-                <p className="text-2xl font-bold text-[#FF9500]">{formatCurrency(summary.revenue.pending)}</p>
+                <p className="text-2xl font-bold text-[#FF9500]">{formatCurrency(summary.total_outstanding)}</p>
                 <p className="text-xs text-[#86868B] mt-1">
-                  {summary.invoices.sent} ใบแจ้งหนี้
+                  {summary.invoices_pending} ใบแจ้งหนี้
                 </p>
               </Card>
 
@@ -164,9 +164,9 @@ export default function FinancePage() {
                   <span className="text-xs text-[#86868B]">เกินกำหนด</span>
                   <AlertCircle className="w-4 h-4 text-[#FF3B30]" />
                 </div>
-                <p className="text-2xl font-bold text-[#FF3B30]">{formatCurrency(summary.revenue.overdue)}</p>
+                <p className="text-2xl font-bold text-[#FF3B30]">{formatCurrency(summary.total_overdue)}</p>
                 <p className="text-xs text-[#86868B] mt-1">
-                  {summary.invoices.overdue} ใบแจ้งหนี้
+                  {summary.invoices_overdue} ใบแจ้งหนี้
                 </p>
               </Card>
             </div>
@@ -178,22 +178,22 @@ export default function FinancePage() {
                 <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4">ใบเสนอราคา</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-[#F5F5F7] rounded-xl">
-                    <p className="text-2xl font-bold text-[#1D1D1F]">{summary.quotations.total}</p>
+                    <p className="text-2xl font-bold text-[#1D1D1F]">{summary.quotations_count}</p>
                     <p className="text-xs text-[#86868B]">ทั้งหมด</p>
                   </div>
                   <div className="text-center p-4 bg-[#FF9500]/10 rounded-xl">
-                    <p className="text-2xl font-bold text-[#FF9500]">{summary.quotations.pending}</p>
+                    <p className="text-2xl font-bold text-[#FF9500]">{summary.quotations_pending}</p>
                     <p className="text-xs text-[#FF9500]">รอตอบรับ</p>
                   </div>
                   <div className="text-center p-4 bg-[#34C759]/10 rounded-xl">
-                    <p className="text-2xl font-bold text-[#34C759]">{summary.quotations.accepted}</p>
-                    <p className="text-xs text-[#34C759]">ยอมรับ</p>
+                    <p className="text-2xl font-bold text-[#34C759]">{summary.quotations_count - summary.quotations_pending}</p>
+                    <p className="text-xs text-[#34C759]">ยอมรับ/อื่นๆ</p>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-[#E8E8ED]">
                   <div className="flex justify-between text-sm">
                     <span className="text-[#86868B]">อัตราการแปลง</span>
-                    <span className="font-semibold text-[#34C759]">{summary.quotations.conversion_rate}%</span>
+                    <span className="font-semibold text-[#34C759]">{summary.conversion_rate_percent}%</span>
                   </div>
                 </div>
               </Card>
@@ -203,26 +203,26 @@ export default function FinancePage() {
                 <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4">ใบแจ้งหนี้</h3>
                 <div className="grid grid-cols-4 gap-3">
                   <div className="text-center p-3 bg-[#F5F5F7] rounded-xl">
-                    <p className="text-xl font-bold text-[#1D1D1F]">{summary.invoices.total}</p>
+                    <p className="text-xl font-bold text-[#1D1D1F]">{summary.invoices_count}</p>
                     <p className="text-xs text-[#86868B]">ทั้งหมด</p>
                   </div>
                   <div className="text-center p-3 bg-[#007AFF]/10 rounded-xl">
-                    <p className="text-xl font-bold text-[#007AFF]">{summary.invoices.sent}</p>
-                    <p className="text-xs text-[#007AFF]">ส่งแล้ว</p>
+                    <p className="text-xl font-bold text-[#007AFF]">{summary.invoices_pending}</p>
+                    <p className="text-xs text-[#007AFF]">รอชำระ</p>
                   </div>
                   <div className="text-center p-3 bg-[#34C759]/10 rounded-xl">
-                    <p className="text-xl font-bold text-[#34C759]">{summary.invoices.paid}</p>
+                    <p className="text-xl font-bold text-[#34C759]">{summary.invoices_count - summary.invoices_pending - summary.invoices_overdue}</p>
                     <p className="text-xs text-[#34C759]">จ่ายแล้ว</p>
                   </div>
                   <div className="text-center p-3 bg-[#FF3B30]/10 rounded-xl">
-                    <p className="text-xl font-bold text-[#FF3B30]">{summary.invoices.overdue}</p>
+                    <p className="text-xl font-bold text-[#FF3B30]">{summary.invoices_overdue}</p>
                     <p className="text-xs text-[#FF3B30]">เกินกำหนด</p>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-[#E8E8ED]">
                   <div className="flex justify-between text-sm">
                     <span className="text-[#86868B]">รับชำระเดือนนี้</span>
-                    <span className="font-semibold text-[#34C759]">{formatCurrency(summary.payments.total_received)}</span>
+                    <span className="font-semibold text-[#34C759]">{formatCurrency(summary.total_paid)}</span>
                   </div>
                 </div>
               </Card>
