@@ -31,7 +31,7 @@ export type OrderStatus =
   | 'on_hold'
   | 'cancelled';
 
-export type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'refunded';
+export type PaymentStatus = 'unpaid' | 'deposit_paid' | 'partial' | 'paid' | 'refunded';
 
 export type PaymentTerms = 'full' | '50_50' | '30_70' | 'credit_7' | 'credit_15' | 'credit_30';
 
@@ -71,12 +71,13 @@ export type DesignStatus =
   | 'not_required'
   | 'pending'
   | 'drafting'
+  | 'in_progress'
   | 'awaiting_review'
   | 'revision_requested'
   | 'approved'
   | 'final';
 
-export type MockupStatus = 'pending' | 'sent' | 'approved' | 'rejected' | 'revision_requested';
+export type MockupStatus = 'pending' | 'in_progress' | 'sent' | 'approved' | 'rejected' | 'revision_requested';
 
 export type RevisionType = 'free' | 'paid' | 'error_fix';
 
@@ -105,7 +106,7 @@ export type StationStatus = 'active' | 'maintenance' | 'offline';
 
 export type QCStage = 'material' | 'pre_production' | 'in_process' | 'post_production' | 'final';
 
-export type QCResult = 'pass' | 'fail' | 'partial' | 'pending';
+export type QCResult = 'pass' | 'fail' | 'partial' | 'pending' | 'pass_with_rework';
 
 // ---------------------------------------------
 // Supplier & Outsource Enums
@@ -134,6 +135,7 @@ export type ChangeRequestType =
   | 'design_revision'
   | 'quantity_increase'
   | 'quantity_decrease'
+  | 'quantity_change'
   | 'size_change'
   | 'color_change'
   | 'add_work'
@@ -145,10 +147,11 @@ export type ChangeRequestType =
   | 'cancel_item'
   | 'other';
 
-export type ChangeRequestCategory = 'minor' | 'major' | 'critical';
+export type ChangeRequestCategory = 'minor' | 'major' | 'critical' | 'customer_request';
 
 export type ChangeRequestStatus =
   | 'pending'
+  | 'pending_quote'
   | 'quoted'
   | 'awaiting_customer'
   | 'approved'
@@ -230,6 +233,7 @@ export const ORDER_STATUS_CONFIG: Record<OrderStatus, StatusDisplayConfig> = {
 
 export const PAYMENT_STATUS_CONFIG: Record<PaymentStatus, StatusDisplayConfig> = {
   unpaid: { label: 'Unpaid', label_th: 'ยังไม่ชำระ', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  deposit_paid: { label: 'Deposit Paid', label_th: 'ชำระมัดจำแล้ว', color: 'text-blue-600', bgColor: 'bg-blue-100' },
   partial: { label: 'Partial', label_th: 'ชำระบางส่วน', color: 'text-amber-600', bgColor: 'bg-amber-100' },
   paid: { label: 'Paid', label_th: 'ชำระแล้ว', color: 'text-green-600', bgColor: 'bg-green-100' },
   refunded: { label: 'Refunded', label_th: 'คืนเงินแล้ว', color: 'text-red-600', bgColor: 'bg-red-100' },

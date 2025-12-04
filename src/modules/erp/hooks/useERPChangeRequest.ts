@@ -172,7 +172,7 @@ export function useERPChangeRequests(filters?: ChangeRequestFilters, pagination?
       return acc;
     }, {} as Record<string, number>),
     by_impact: changeRequests.reduce((acc, cr) => {
-      const key = cr.impact_level || cr.impact?.level || 'unknown';
+      const key = cr.impact_level || (typeof cr.impact === 'object' && cr.impact.level) || 'unknown';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),

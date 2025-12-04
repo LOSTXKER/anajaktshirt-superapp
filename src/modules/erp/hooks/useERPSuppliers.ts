@@ -34,7 +34,7 @@ export function useERPSuppliers(filters?: SupplierFilters, pagination?: Paginati
       setLoading(true);
       const result = await supabaseSupplierRepository.findMany(filters, pagination);
       setSuppliers(result.data);
-      setTotalCount(result.totalCount);
+      setTotalCount(result.totalCount ?? result.pagination?.total ?? 0);
     } catch (err: any) {
       setError(err.message);
     } finally {
