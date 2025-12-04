@@ -12,6 +12,37 @@ import type {
 } from '../types/change-requests';
 import type { PaginationParams } from '../types/common';
 
+// ---------------------------------------------
+// STATUS & TYPE CONFIGS
+// ---------------------------------------------
+
+export const CHANGE_REQUEST_STATUS_CONFIG = {
+  pending: { label: 'Pending', label_th: 'รอดำเนินการ', color: 'bg-yellow-100 text-yellow-700' },
+  quoted: { label: 'Quoted', label_th: 'ส่งราคาแล้ว', color: 'bg-blue-100 text-blue-700' },
+  approved: { label: 'Approved', label_th: 'อนุมัติแล้ว', color: 'bg-green-100 text-green-700' },
+  rejected: { label: 'Rejected', label_th: 'ปฏิเสธ', color: 'bg-red-100 text-red-700' },
+  in_progress: { label: 'In Progress', label_th: 'กำลังดำเนินการ', color: 'bg-purple-100 text-purple-700' },
+  completed: { label: 'Completed', label_th: 'เสร็จสิ้น', color: 'bg-gray-100 text-gray-700' },
+  cancelled: { label: 'Cancelled', label_th: 'ยกเลิก', color: 'bg-gray-100 text-gray-500' },
+};
+
+export const CHANGE_TYPE_CONFIG = {
+  design: { label: 'Design Change', label_th: 'เปลี่ยนแบบ', icon: '🎨' },
+  quantity: { label: 'Quantity Change', label_th: 'เปลี่ยนจำนวน', icon: '📦' },
+  color: { label: 'Color Change', label_th: 'เปลี่ยนสี', icon: '🎨' },
+  size: { label: 'Size Change', label_th: 'เปลี่ยนไซส์', icon: '📏' },
+  material: { label: 'Material Change', label_th: 'เปลี่ยนวัสดุ', icon: '🧵' },
+  deadline: { label: 'Deadline Change', label_th: 'เปลี่ยนกำหนดส่ง', icon: '📅' },
+  cancel: { label: 'Cancel Order', label_th: 'ยกเลิกออเดอร์', icon: '❌' },
+  other: { label: 'Other', label_th: 'อื่นๆ', icon: '📝' },
+};
+
+export const IMPACT_LEVEL_CONFIG = {
+  low: { label: 'Low', label_th: 'น้อย', color: 'bg-green-100 text-green-600' },
+  medium: { label: 'Medium', label_th: 'ปานกลาง', color: 'bg-yellow-100 text-yellow-600' },
+  high: { label: 'High', label_th: 'มาก', color: 'bg-red-100 text-red-600' },
+};
+
 export function useERPChangeRequests(filters?: ChangeRequestFilters, pagination?: PaginationParams) {
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
   const [totalCount, setTotalCount] = useState(0);
