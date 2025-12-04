@@ -38,6 +38,7 @@ import {
   useERPPrintConfig,
   useERPOrderConfig,
   useERPWorkDependencies,
+  supabaseOrderRepository,
 } from '@/modules/erp';
 import { useOrderMutations } from '@/modules/orders/hooks/useOrderMutations';
 import type { Customer, Product, OrderType, PriorityLevel, WorkType } from '@/modules/erp';
@@ -491,9 +492,35 @@ export default function CreateOrderPage() {
       
       const result = await createOrder(orderInput);
       
-      if (result.success) {
+      if (result.success && result.order) {
+        const orderId = result.order.id;
+        console.log('Order created:', orderId);
+
+        // Create work items
+        if (formData.work_items.length > 0) {
+          const workItemPromises = formData.work_items.map((item, index) => 
+            supabaseOrderRepository.createWorkItem({
+              order_id: orderId,
+              work_type_code: item.work_type_code,
+              position_code: item.position_code || undefined,
+              size_code: item.size_code || undefined,
+              description: item.description || undefined,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.quantity * item.unit_price,
+              status: 'pending',
+              production_mode: 'in_house', // Default
+              sequence_order: index,
+              notes: item.notes,
+            })
+          );
+
+          await Promise.all(workItemPromises);
+          console.log(`Created ${formData.work_items.length} work items`);
+        }
+
         success('สร้างออเดอร์สำเร็จ!');
-        router.push('/orders');
+        router.push(`/orders/${orderId}`);
       } else {
         showError(result.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
       }
