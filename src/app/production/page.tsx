@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Button, Card, Input, Modal, Select, useToast, QuantityInput } from '@/modules/shared/ui';
+import { Badge, Button, Card, Input, Modal, Dropdown, useToast, QuantityInput } from '@/modules/shared/ui';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
@@ -312,28 +312,30 @@ export default function ProductionPage() {
           </div>
           
           {/* Work Type */}
-          <Select
+          <Dropdown
+            options={[
+              { value: '', label: 'ประเภทงานทั้งหมด' },
+              ...Object.entries(WORK_TYPE_CONFIG).map(([code, config]) => ({ value: code, label: config.label }))
+            ]}
             value={workTypeFilter}
-            onChange={(e) => setWorkTypeFilter(e.target.value)}
+            onChange={(value) => setWorkTypeFilter(value)}
+            placeholder="ประเภทงานทั้งหมด"
             className="w-full lg:w-48"
-          >
-            <option value="">ประเภทงานทั้งหมด</option>
-            {Object.entries(WORK_TYPE_CONFIG).map(([code, config]) => (
-              <option key={code} value={code}>{config.label}</option>
-            ))}
-          </Select>
+          />
           
           {/* Priority */}
-          <Select
+          <Dropdown
+            options={[
+              { value: '', label: 'ทุกลำดับความสำคัญ' },
+              { value: '2', label: 'ด่วนมาก' },
+              { value: '1', label: 'เร่งด่วน' },
+              { value: '0', label: 'ปกติ' },
+            ]}
             value={priorityFilter?.toString() || ''}
-            onChange={(e) => setPriorityFilter(e.target.value ? Number(e.target.value) : undefined)}
+            onChange={(value) => setPriorityFilter(value ? Number(value) : undefined)}
+            placeholder="ทุกลำดับความสำคัญ"
             className="w-full lg:w-40"
-          >
-            <option value="">ทุกลำดับความสำคัญ</option>
-            <option value="2">ด่วนมาก</option>
-            <option value="1">เร่งด่วน</option>
-            <option value="0">ปกติ</option>
-          </Select>
+          />
                       </div>
                       
         {/* Status Filters */}
@@ -670,14 +672,11 @@ export default function ProductionPage() {
             
             <div>
               <label className="block text-sm text-[#86868B] mb-1">ประเภทงาน</label>
-              <Select
+              <Dropdown
+                options={Object.entries(WORK_TYPE_CONFIG).map(([code, config]) => ({ value: code, label: config.label }))}
                 value={createForm.work_type_code}
-                onChange={(e) => setCreateForm(f => ({ ...f, work_type_code: e.target.value }))}
-              >
-                {Object.entries(WORK_TYPE_CONFIG).map(([code, config]) => (
-                  <option key={code} value={code}>{config.label}</option>
-                ))}
-              </Select>
+                onChange={(value) => setCreateForm(f => ({ ...f, work_type_code: value }))}
+              />
             </div>
             
             <div>
@@ -692,14 +691,15 @@ export default function ProductionPage() {
             
             <div>
               <label className="block text-sm text-[#86868B] mb-1">ความสำคัญ</label>
-              <Select
+              <Dropdown
+                options={[
+                  { value: '0', label: 'ปกติ' },
+                  { value: '1', label: 'เร่งด่วน' },
+                  { value: '2', label: 'ด่วนมาก' },
+                ]}
                 value={createForm.priority.toString()}
-                onChange={(e) => setCreateForm(f => ({ ...f, priority: parseInt(e.target.value) as JobPriority }))}
-              >
-                <option value="0">ปกติ</option>
-                <option value="1">เร่งด่วน</option>
-                <option value="2">ด่วนมาก</option>
-              </Select>
+                onChange={(value) => setCreateForm(f => ({ ...f, priority: parseInt(value) as JobPriority }))}
+              />
             </div>
             
             <div>

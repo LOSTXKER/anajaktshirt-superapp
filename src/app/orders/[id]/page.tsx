@@ -1,7 +1,7 @@
 'use client';
 
-import { Button, Card, Input, Modal, useToast } from '@/modules/shared/ui';
-import { useState, useEffect } from 'react';
+import { Button, Card, Input, Modal, useToast, Dropdown } from '@/modules/shared/ui';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -841,16 +841,15 @@ export default function OrderDetailPage() {
         <div className="p-4 space-y-4">
           <div>
             <label className="block text-sm text-[#86868B] mb-2">สถานะใหม่</label>
-            <select
+            <Dropdown
+              options={Object.entries(ORDER_STATUS_CONFIG).map(([key, config]) => ({
+                value: key,
+                label: config.label_th,
+              }))}
               value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as OrderStatus)}
-              className="w-full px-3 py-2 bg-[#F5F5F7] border border-[#E8E8ED] rounded-lg text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-            >
-              <option value="">เลือกสถานะ</option>
-              {Object.entries(ORDER_STATUS_CONFIG).map(([key, config]) => (
-                <option key={key} value={key}>{config.label_th}</option>
-              ))}
-            </select>
+              onChange={(value) => setNewStatus(value as OrderStatus)}
+              placeholder="เลือกสถานะ"
+            />
           </div>
           
           <div>

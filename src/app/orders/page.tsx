@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, Input } from '@/modules/shared/ui';
+import { Button, Card, Input, Dropdown } from '@/modules/shared/ui';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { 
@@ -223,17 +223,13 @@ export default function OrdersPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <select
+            <Dropdown
+              options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as OrderStatus | '')}
-              className="px-4 py-2 bg-[#F5F5F7] border border-[#E8E8ED] rounded-lg text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-            >
-              {statusOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setStatusFilter(val as OrderStatus | '')}
+              placeholder="ทุกสถานะ"
+              className="w-48"
+            />
             <Button
               variant="secondary"
               onClick={() => setShowFilters(!showFilters)}

@@ -1,7 +1,7 @@
 'use client';
 
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/modules/shared/ui';
-import { useState } from 'react';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Dropdown } from '@/modules/shared/ui';
+import { useState, useMemo } from 'react';
 import { useAuditLogs } from '@/modules/audit/hooks/useAuditLogs';
 import { ACTION_LABELS, ENTITY_LABELS, AuditLogFilters } from '@/modules/audit/types';
 import { 
@@ -21,6 +21,17 @@ export default function AuditLogsPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const { logs, loading, error, totalCount, page, setPage, totalPages, refetch } = useAuditLogs(filters);
+
+  // Dropdown options
+  const actionOptions = useMemo(() => [
+    { value: '', label: 'ทั้งหมด' },
+    ...Object.entries(ACTION_LABELS).map(([key, { label }]) => ({ value: key, label }))
+  ], []);
+
+  const entityOptions = useMemo(() => [
+    { value: '', label: 'ทั้งหมด' },
+    ...Object.entries(ENTITY_LABELS).map(([key, label]) => ({ value: key, label }))
+  ], []);
 
   const handleFilterChange = (key: keyof AuditLogFilters, value: string) => {
     setFilters(prev => ({
@@ -85,32 +96,26 @@ export default function AuditLogsPage() {
                 <label className="block text-[13px] font-medium text-[#86868B] mb-1.5">
                   การกระทำ
                 </label>
-                <select
+                <Dropdown
+                  options={actionOptions}
                   value={filters.action || ''}
-                  onChange={(e) => handleFilterChange('action', e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl bg-[#F5F5F7] border-0 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
-                >
-                  <option value="">ทั้งหมด</option>
-                  {Object.entries(ACTION_LABELS).map(([key, { label }]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => handleFilterChange('action', value)}
+                  placeholder="ทั้งหมด"
+                  size="sm"
+                />
               </div>
 
               <div>
                 <label className="block text-[13px] font-medium text-[#86868B] mb-1.5">
                   ประเภทข้อมูล
                 </label>
-                <select
+                <Dropdown
+                  options={entityOptions}
                   value={filters.entity_type || ''}
-                  onChange={(e) => handleFilterChange('entity_type', e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl bg-[#F5F5F7] border-0 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
-                >
-                  <option value="">ทั้งหมด</option>
-                  {Object.entries(ENTITY_LABELS).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => handleFilterChange('entity_type', value)}
+                  placeholder="ทั้งหมด"
+                  size="sm"
+                />
               </div>
 
               <div>
