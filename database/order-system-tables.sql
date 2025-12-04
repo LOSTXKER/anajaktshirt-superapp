@@ -84,7 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_order_designs_order_id ON order_designs(order_id)
 -- 4. Design Versions - เวอร์ชันการออกแบบ
 CREATE TABLE IF NOT EXISTS design_versions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  design_id UUID NOT NULL REFERENCES order_designs(id) ON DELETE CASCADE,
+  design_id UUID,
   version_number INTEGER NOT NULL DEFAULT 1,
   file_url TEXT,
   thumbnail_url TEXT,
@@ -97,8 +97,14 @@ CREATE TABLE IF NOT EXISTS design_versions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for design_versions
-CREATE INDEX IF NOT EXISTS idx_design_versions_design_id ON design_versions(design_id);
+-- Add design_id column if not exists
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'design_versions' AND column_name = 'design_id') THEN
+    ALTER TABLE design_versions ADD COLUMN design_id UUID;
+  END IF;
+END $$;
 
 -- 5. Order Mockups - Mockup
 CREATE TABLE IF NOT EXISTS order_mockups (
@@ -121,12 +127,16 @@ CREATE TABLE IF NOT EXISTS order_mockups (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Add work_item_id column if not exists
+-- Add work_item_id and design_id columns if not exists
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name = 'order_mockups' AND column_name = 'work_item_id') THEN
     ALTER TABLE order_mockups ADD COLUMN work_item_id UUID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'order_mockups' AND column_name = 'design_id') THEN
+    ALTER TABLE order_mockups ADD COLUMN design_id UUID;
   END IF;
 END $$;
 
