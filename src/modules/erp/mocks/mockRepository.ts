@@ -1,7 +1,8 @@
 // =============================================
 // MOCK REPOSITORY IMPLEMENTATION
 // =============================================
-// Use this for development without database
+// Uses localStorage for persistent data storage
+// Data persists across page refreshes
 // =============================================
 
 import type {
@@ -84,8 +85,66 @@ import {
 } from './data';
 
 // ---------------------------------------------
-// Helper Functions
+// localStorage Helper Functions
 // ---------------------------------------------
+
+const STORAGE_KEYS = {
+  ORDERS: 'erp_orders',
+  WORK_ITEMS: 'erp_work_items',
+  PAYMENTS: 'erp_payments',
+  PRODUCTION_JOBS: 'erp_production_jobs',
+  PRODUCTION_STATIONS: 'erp_production_stations',
+  SUPPLIERS: 'erp_suppliers',
+  PURCHASE_ORDERS: 'erp_purchase_orders',
+  CHANGE_REQUESTS: 'erp_change_requests',
+  QC_RECORDS: 'erp_qc_records',
+  INITIALIZED: 'erp_initialized',
+};
+
+function getFromStorage<T>(key: string, fallback: T[]): T[] {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveToStorage<T>(key: string, data: T[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save to localStorage:', e);
+  }
+}
+
+function initializeStorage(): void {
+  if (typeof window === 'undefined') return;
+  
+  const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
+  if (isInitialized) return;
+  
+  console.log('🚀 Initializing localStorage with mock data...');
+  
+  saveToStorage(STORAGE_KEYS.ORDERS, mockOrders);
+  saveToStorage(STORAGE_KEYS.WORK_ITEMS, mockWorkItems);
+  saveToStorage(STORAGE_KEYS.PAYMENTS, mockPayments);
+  saveToStorage(STORAGE_KEYS.PRODUCTION_JOBS, mockProductionJobs);
+  saveToStorage(STORAGE_KEYS.PRODUCTION_STATIONS, mockStations);
+  saveToStorage(STORAGE_KEYS.SUPPLIERS, mockSuppliers);
+  saveToStorage(STORAGE_KEYS.PURCHASE_ORDERS, mockPurchaseOrders);
+  saveToStorage(STORAGE_KEYS.CHANGE_REQUESTS, mockChangeRequests);
+  
+  localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+  console.log('✅ localStorage initialized!');
+}
+
+// Initialize on module load
+if (typeof window !== 'undefined') {
+  initializeStorage();
+}
 
 function generateId(): string {
   return `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -117,32 +176,52 @@ function delay(ms: number = 100): Promise<void> {
 }
 
 // ---------------------------------------------
-// Mock Order Repository
+// Mock Order Repository (localStorage-backed)
 // ---------------------------------------------
 
 class MockOrderRepository implements IOrderRepository {
-  private orders: Order[] = [...mockOrders];
-  private workItems: OrderWorkItem[] = [...mockWorkItems];
-  private payments: OrderPayment[] = [...mockPayments];
+  private getOrders(): Order[] {
+    return getFromStorage<Order>(STORAGE_KEYS.ORDERS, mockOrders);
+  }
+
+  private saveOrders(orders: Order[]): void {
+    saveToStorage(STORAGE_KEYS.ORDERS, orders);
+  }
+
+  private _getWorkItemsFromStorage(): OrderWorkItem[] {
+    return getFromStorage<OrderWorkItem>(STORAGE_KEYS.WORK_ITEMS, mockWorkItems);
+  }
+
+  private _saveWorkItemsToStorage(items: OrderWorkItem[]): void {
+    saveToStorage(STORAGE_KEYS.WORK_ITEMS, items);
+  }
+
+  private _getPaymentsFromStorage(): OrderPayment[] {
+    return getFromStorage<OrderPayment>(STORAGE_KEYS.PAYMENTS, mockPayments);
+  }
+
+  private _savePaymentsToStorage(payments: OrderPayment[]): void {
+    saveToStorage(STORAGE_KEYS.PAYMENTS, payments);
+  }
 
   async findById(id: string): Promise<Order | null> {
     await delay();
-    return this.orders.find(o => o.id === id) || null;
+    return this.getOrders().find(o => o.id === id) || null;
   }
 
   async findByOrderNumber(orderNumber: string): Promise<Order | null> {
     await delay();
-    return this.orders.find(o => o.order_number === orderNumber) || null;
+    return this.getOrders().find(o => o.order_number === orderNumber) || null;
   }
 
   async findByAccessToken(token: string): Promise<Order | null> {
     await delay();
-    return this.orders.find(o => o.access_token === token) || null;
+    return this.getOrders().find(o => o.access_token === token) || null;
   }
 
   async findMany(filters?: OrderFilters, pagination?: PaginationParams): Promise<PaginatedResult<Order>> {
     await delay();
-    let result = [...this.orders];
+    let result = [...this.getOrders()];
 
     if (filters?.status) {
       const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
@@ -166,9 +245,10 @@ class MockOrderRepository implements IOrderRepository {
 
   async create(data: CreateOrderInput): Promise<ActionResult<Order>> {
     await delay();
+    const orders = this.getOrders();
     const newOrder: Order = {
       id: generateId(),
-      order_number: `ORD-2024-${String(this.orders.length + 1).padStart(4, '0')}`,
+      order_number: `ORD-2024-${String(orders.length + 1).padStart(4, '0')}`,
       order_type_code: data.order_type_code || 'ready_made',
       production_mode: data.production_mode || 'in_house',
       customer_snapshot: {
@@ -232,44 +312,53 @@ class MockOrderRepository implements IOrderRepository {
       updated_at: new Date().toISOString(),
     };
 
-    this.orders.push(newOrder);
+    orders.push(newOrder);
+    this.saveOrders(orders);
+    console.log('📝 Order created:', newOrder.order_number);
     return { success: true, data: newOrder };
   }
 
   async update(id: string, data: UpdateOrderInput): Promise<ActionResult<Order>> {
     await delay();
-    const index = this.orders.findIndex(o => o.id === id);
+    const orders = this.getOrders();
+    const index = orders.findIndex(o => o.id === id);
     if (index === -1) {
       return { success: false, message: 'Order not found' };
     }
 
-    this.orders[index] = {
-      ...this.orders[index],
+    orders[index] = {
+      ...orders[index],
       ...data,
       updated_at: new Date().toISOString(),
     };
+    this.saveOrders(orders);
 
-    return { success: true, data: this.orders[index] };
+    console.log('📝 Order updated:', orders[index].order_number);
+    return { success: true, data: orders[index] };
   }
 
   async delete(id: string): Promise<ActionResult> {
     await delay();
-    const index = this.orders.findIndex(o => o.id === id);
+    const orders = this.getOrders();
+    const index = orders.findIndex(o => o.id === id);
     if (index === -1) {
       return { success: false, message: 'Order not found' };
     }
 
-    this.orders.splice(index, 1);
+    orders.splice(index, 1);
+    this.saveOrders(orders);
+    console.log('🗑️ Order deleted');
     return { success: true };
   }
 
   async getWorkItems(orderId: string): Promise<OrderWorkItem[]> {
     await delay();
-    return this.workItems.filter(wi => wi.order_id === orderId);
+    return this._getWorkItemsFromStorage().filter(wi => wi.order_id === orderId);
   }
 
   async addWorkItem(data: CreateWorkItemInput): Promise<ActionResult<OrderWorkItem>> {
     await delay();
+    const workItems = this._getWorkItemsFromStorage();
     const newItem: OrderWorkItem = {
       id: generateId(),
       order_id: data.order_id,
@@ -292,39 +381,45 @@ class MockOrderRepository implements IOrderRepository {
       print_size_name: data.print_size_name,
       priority: data.priority || 0,
       notes: data.notes,
-      sort_order: this.workItems.filter(wi => wi.order_id === data.order_id).length + 1,
+      sort_order: workItems.filter(wi => wi.order_id === data.order_id).length + 1,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    this.workItems.push(newItem);
+    workItems.push(newItem);
+    this._saveWorkItemsToStorage(workItems);
+    console.log('📝 Work item added');
     return { success: true, data: newItem };
   }
 
   async updateWorkItem(id: string, data: Partial<OrderWorkItem>): Promise<ActionResult<OrderWorkItem>> {
     await delay();
-    const index = this.workItems.findIndex(wi => wi.id === id);
+    const workItems = this._getWorkItemsFromStorage();
+    const index = workItems.findIndex(wi => wi.id === id);
     if (index === -1) {
       return { success: false, message: 'Work item not found' };
     }
 
-    this.workItems[index] = {
-      ...this.workItems[index],
+    workItems[index] = {
+      ...workItems[index],
       ...data,
       updated_at: new Date().toISOString(),
     };
+    this._saveWorkItemsToStorage(workItems);
 
-    return { success: true, data: this.workItems[index] };
+    return { success: true, data: workItems[index] };
   }
 
   async deleteWorkItem(id: string): Promise<ActionResult> {
     await delay();
-    const index = this.workItems.findIndex(wi => wi.id === id);
+    const workItems = this._getWorkItemsFromStorage();
+    const index = workItems.findIndex(wi => wi.id === id);
     if (index === -1) {
       return { success: false, message: 'Work item not found' };
     }
 
-    this.workItems.splice(index, 1);
+    workItems.splice(index, 1);
+    this._saveWorkItemsToStorage(workItems);
     return { success: true };
   }
 
@@ -360,11 +455,12 @@ class MockOrderRepository implements IOrderRepository {
 
   async getPayments(orderId: string): Promise<OrderPayment[]> {
     await delay();
-    return this.payments.filter(p => p.order_id === orderId);
+    return this._getPaymentsFromStorage().filter(p => p.order_id === orderId);
   }
 
   async addPayment(data: CreatePaymentInput): Promise<ActionResult<OrderPayment>> {
     await delay();
+    const payments = this._getPaymentsFromStorage();
     const newPayment: OrderPayment = {
       id: generateId(),
       order_id: data.order_id,
@@ -382,58 +478,70 @@ class MockOrderRepository implements IOrderRepository {
       created_at: new Date().toISOString(),
     };
 
-    this.payments.push(newPayment);
+    payments.push(newPayment);
+    this._savePaymentsToStorage(payments);
+    console.log('💰 Payment added');
     return { success: true, data: newPayment };
   }
 
   async verifyPayment(paymentId: string, verifiedBy: string): Promise<ActionResult> {
     await delay();
-    const payment = this.payments.find(p => p.id === paymentId);
+    const payments = this._getPaymentsFromStorage();
+    const payment = payments.find(p => p.id === paymentId);
     if (payment) {
       payment.status = 'verified';
       payment.verified_by = verifiedBy;
       payment.verified_at = new Date().toISOString();
+      this._savePaymentsToStorage(payments);
     }
     return { success: true };
   }
 
   async rejectPayment(paymentId: string, reason: string): Promise<ActionResult> {
     await delay();
-    const payment = this.payments.find(p => p.id === paymentId);
+    const payments = this._getPaymentsFromStorage();
+    const payment = payments.find(p => p.id === paymentId);
     if (payment) {
       payment.status = 'rejected';
       payment.rejection_reason = reason;
+      this._savePaymentsToStorage(payments);
     }
     return { success: true };
   }
 
   async updateStatus(orderId: string, status: string, reason?: string): Promise<ActionResult> {
     await delay();
-    const order = this.orders.find(o => o.id === orderId);
+    const orders = this.getOrders();
+    const order = orders.find(o => o.id === orderId);
     if (order) {
       order.status = status as Order['status'];
       order.updated_at = new Date().toISOString();
+      this.saveOrders(orders);
+      console.log('📝 Order status updated to:', status);
     }
     return { success: true };
   }
 
   async getStats(filters?: OrderFilters): Promise<OrderStats> {
     await delay();
+    const orders = this.getOrders();
     return {
-      total_orders: this.orders.length,
-      total_revenue: this.orders.reduce((sum, o) => sum + o.pricing.total_amount, 0),
-      pending_orders: this.orders.filter(o => ['draft', 'quoted', 'awaiting_payment'].includes(o.status)).length,
-      in_production: this.orders.filter(o => o.status === 'in_production').length,
-      ready_to_ship: this.orders.filter(o => o.status === 'ready_to_ship').length,
-      completed_this_month: this.orders.filter(o => o.status === 'completed').length,
+      total_orders: orders.length,
+      total_revenue: orders.reduce((sum, o) => sum + o.pricing.total_amount, 0),
+      pending_orders: orders.filter(o => ['draft', 'quoted', 'awaiting_payment'].includes(o.status)).length,
+      in_production: orders.filter(o => o.status === 'in_production').length,
+      ready_to_ship: orders.filter(o => o.status === 'ready_to_ship').length,
+      completed_this_month: orders.filter(o => o.status === 'completed').length,
       overdue_orders: 0,
-      avg_order_value: this.orders.reduce((sum, o) => sum + o.pricing.total_amount, 0) / this.orders.length,
+      avg_order_value: orders.reduce((sum, o) => sum + o.pricing.total_amount, 0) / orders.length,
     };
   }
 
   async getSummaries(filters?: OrderFilters, pagination?: PaginationParams): Promise<PaginatedResult<OrderSummary>> {
     await delay();
-    const summaries: OrderSummary[] = this.orders.map(o => ({
+    const orders = this.getOrders();
+    const workItems = this._getWorkItemsFromStorage();
+    const summaries: OrderSummary[] = orders.map(o => ({
       id: o.id,
       order_number: o.order_number,
       customer_name: o.customer_snapshot.name,
@@ -443,7 +551,7 @@ class MockOrderRepository implements IOrderRepository {
       paid_amount: o.paid_amount,
       due_date: o.due_date,
       order_date: o.order_date,
-      work_items_count: this.workItems.filter(wi => wi.order_id === o.id).length,
+      work_items_count: workItems.filter(wi => wi.order_id === o.id).length,
       is_overdue: false,
     }));
 
@@ -452,26 +560,35 @@ class MockOrderRepository implements IOrderRepository {
 }
 
 // ---------------------------------------------
-// Mock Production Repository
+// Mock Production Repository (localStorage-backed)
 // ---------------------------------------------
 
 class MockProductionRepository implements IProductionRepository {
-  private jobs: ProductionJob[] = [...mockProductionJobs];
-  private stations: ProductionStation[] = [...mockStations];
+  private _getJobs(): ProductionJob[] {
+    return getFromStorage<ProductionJob>(STORAGE_KEYS.PRODUCTION_JOBS, mockProductionJobs);
+  }
+
+  private _saveJobs(jobs: ProductionJob[]): void {
+    saveToStorage(STORAGE_KEYS.PRODUCTION_JOBS, jobs);
+  }
+
+  private _getStations(): ProductionStation[] {
+    return getFromStorage<ProductionStation>(STORAGE_KEYS.PRODUCTION_STATIONS, mockStations);
+  }
 
   async findById(id: string): Promise<ProductionJob | null> {
     await delay();
-    return this.jobs.find(j => j.id === id) || null;
+    return this._getJobs().find(j => j.id === id) || null;
   }
 
   async findByJobNumber(jobNumber: string): Promise<ProductionJob | null> {
     await delay();
-    return this.jobs.find(j => j.job_number === jobNumber) || null;
+    return this._getJobs().find(j => j.job_number === jobNumber) || null;
   }
 
   async findMany(filters?: ProductionJobFilters, pagination?: PaginationParams): Promise<PaginatedResult<ProductionJob>> {
     await delay();
-    let result = [...this.jobs];
+    let result = [...this._getJobs()];
 
     if (filters?.status) {
       const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
@@ -483,9 +600,10 @@ class MockProductionRepository implements IProductionRepository {
 
   async create(data: CreateProductionJobInput): Promise<ActionResult<ProductionJob>> {
     await delay();
+    const jobs = this._getJobs();
     const newJob: ProductionJob = {
       id: generateId(),
-      job_number: `PJ-2024-${String(this.jobs.length + 1).padStart(4, '0')}`,
+      job_number: `PJ-2024-${String(jobs.length + 1).padStart(4, '0')}`,
       order_id: data.order_id,
       order_work_item_id: data.order_work_item_id,
       work_type_code: data.work_type_code,
@@ -510,45 +628,51 @@ class MockProductionRepository implements IProductionRepository {
       updated_at: new Date().toISOString(),
     };
 
-    this.jobs.push(newJob);
+    jobs.push(newJob);
+    this._saveJobs(jobs);
+    console.log('🏭 Production job created:', newJob.job_number);
     return { success: true, data: newJob };
   }
 
   async update(id: string, data: UpdateProductionJobInput): Promise<ActionResult<ProductionJob>> {
     await delay();
-    const index = this.jobs.findIndex(j => j.id === id);
+    const jobs = this._getJobs();
+    const index = jobs.findIndex(j => j.id === id);
     if (index === -1) {
       return { success: false, message: 'Job not found' };
     }
 
-    this.jobs[index] = {
-      ...this.jobs[index],
+    jobs[index] = {
+      ...jobs[index],
       ...data,
       updated_at: new Date().toISOString(),
     };
+    this._saveJobs(jobs);
 
-    return { success: true, data: this.jobs[index] };
+    return { success: true, data: jobs[index] };
   }
 
   async delete(id: string): Promise<ActionResult> {
     await delay();
-    const index = this.jobs.findIndex(j => j.id === id);
+    const jobs = this._getJobs();
+    const index = jobs.findIndex(j => j.id === id);
     if (index === -1) {
       return { success: false, message: 'Job not found' };
     }
 
-    this.jobs.splice(index, 1);
+    jobs.splice(index, 1);
+    this._saveJobs(jobs);
     return { success: true };
   }
 
   async getStations(): Promise<ProductionStation[]> {
     await delay();
-    return this.stations;
+    return this._getStations();
   }
 
   async getStationWorkload(stationId: string): Promise<{ pending: number; in_progress: number }> {
     await delay();
-    const stationJobs = this.jobs.filter(j => j.station_id === stationId);
+    const stationJobs = this._getJobs().filter(j => j.station_id === stationId);
     return {
       pending: stationJobs.filter(j => j.status === 'queued').length,
       in_progress: stationJobs.filter(j => j.status === 'in_progress').length,
@@ -557,62 +681,74 @@ class MockProductionRepository implements IProductionRepository {
 
   async assignToStation(jobId: string, stationId: string): Promise<ActionResult> {
     await delay();
-    const job = this.jobs.find(j => j.id === jobId);
+    const jobs = this._getJobs();
+    const job = jobs.find(j => j.id === jobId);
     if (job) {
       job.station_id = stationId;
       job.status = 'assigned';
       job.updated_at = new Date().toISOString();
+      this._saveJobs(jobs);
     }
     return { success: true };
   }
 
   async assignToWorker(jobId: string, workerId: string): Promise<ActionResult> {
     await delay();
-    const job = this.jobs.find(j => j.id === jobId);
+    const jobs = this._getJobs();
+    const job = jobs.find(j => j.id === jobId);
     if (job) {
       job.assigned_to = workerId;
       job.assigned_at = new Date().toISOString();
       job.updated_at = new Date().toISOString();
+      this._saveJobs(jobs);
     }
     return { success: true };
   }
 
   async startJob(jobId: string): Promise<ActionResult> {
     await delay();
-    const job = this.jobs.find(j => j.id === jobId);
+    const jobs = this._getJobs();
+    const job = jobs.find(j => j.id === jobId);
     if (job) {
       job.status = 'in_progress';
       job.started_at = new Date().toISOString();
       job.updated_at = new Date().toISOString();
+      this._saveJobs(jobs);
+      console.log('▶️ Job started:', job.job_number);
     }
     return { success: true };
   }
 
   async logProduction(data: LogProductionInput): Promise<ActionResult> {
     await delay();
-    const job = this.jobs.find(j => j.id === data.job_id);
+    const jobs = this._getJobs();
+    const job = jobs.find(j => j.id === data.job_id);
     if (job && data.produced_qty) {
       job.produced_qty += data.produced_qty;
       job.progress_percent = Math.round((job.produced_qty / job.ordered_qty) * 100);
       job.updated_at = new Date().toISOString();
+      this._saveJobs(jobs);
     }
     return { success: true };
   }
 
   async completeJob(jobId: string): Promise<ActionResult> {
     await delay();
-    const job = this.jobs.find(j => j.id === jobId);
+    const jobs = this._getJobs();
+    const job = jobs.find(j => j.id === jobId);
     if (job) {
       job.status = 'completed';
       job.completed_at = new Date().toISOString();
       job.updated_at = new Date().toISOString();
+      this._saveJobs(jobs);
+      console.log('✅ Job completed:', job.job_number);
     }
     return { success: true };
   }
 
   async getQueue(stationId?: string): Promise<ProductionJobSummary[]> {
     await delay();
-    let jobs = this.jobs.filter(j => ['pending', 'queued', 'assigned'].includes(j.status));
+    let jobs = this._getJobs().filter(j => ['pending', 'queued', 'assigned'].includes(j.status));
     if (stationId) {
       jobs = jobs.filter(j => j.station_id === stationId);
     }
@@ -641,12 +777,13 @@ class MockProductionRepository implements IProductionRepository {
 
   async getStats(filters?: ProductionJobFilters): Promise<ProductionStats> {
     await delay();
+    const jobs = this._getJobs();
     return {
-      total_jobs: this.jobs.length,
-      pending_jobs: this.jobs.filter(j => j.status === 'pending').length,
-      in_progress_jobs: this.jobs.filter(j => j.status === 'in_progress').length,
+      total_jobs: jobs.length,
+      pending_jobs: jobs.filter(j => j.status === 'pending').length,
+      in_progress_jobs: jobs.filter(j => j.status === 'in_progress').length,
       completed_today: 0,
-      total_qty_pending: this.jobs.filter(j => j.status !== 'completed').reduce((sum, j) => sum + j.ordered_qty - j.produced_qty, 0),
+      total_qty_pending: jobs.filter(j => j.status !== 'completed').reduce((sum, j) => sum + j.ordered_qty - j.produced_qty, 0),
       total_qty_completed_today: 0,
       on_time_rate: 95,
       rework_rate: 2,
