@@ -194,7 +194,12 @@ export class SupabaseOrderRepository implements IOrderRepository {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching orders:', error);
+      console.error('Error fetching orders:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       return {
         data: [],
         pagination: { page, pageSize, totalCount: 0, totalPages: 0 },
