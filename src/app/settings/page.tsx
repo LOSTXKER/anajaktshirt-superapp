@@ -1,746 +1,339 @@
 'use client';
 
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, useToast } from '@/modules/shared/ui';
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Settings, 
-  User, 
-  Bell, 
-  MessageSquare,
-  Mail,
-  Shield,
-  Save,
-  Check,
+import { useState } from 'react';
+import { Card, Button, Badge } from '@/modules/shared/ui';
+import {
+  Settings as SettingsIcon,
+  Database,
+  Download,
+  Upload,
+  Trash2,
+  RefreshCw,
   AlertTriangle,
-  Package,
-  Factory,
-  ShoppingCart,
-  ExternalLink,
-  Copy,
-  Eye,
-  EyeOff,
-  Send,
-  Loader2
+  CheckCircle2,
+  Info,
 } from 'lucide-react';
-import { createClient } from '@/modules/shared/services/supabase-client';
+import {
+  getStorageStats,
+  clearLocalStorage,
+  initializeLocalStorage,
+} from '@/modules/erp/storage/localStorage';
+import { useERP } from '@/modules/erp';
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-};
-
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
+const STORAGE_KEYS = {
+  ORDERS: 'erp_orders',
+  WORK_ITEMS: 'erp_work_items',
+  PAYMENTS: 'erp_payments',
+  PRODUCTION_JOBS: 'erp_production_jobs',
+  PRODUCTION_STATIONS: 'erp_production_stations',
+  SUPPLIERS: 'erp_suppliers',
+  PURCHASE_ORDERS: 'erp_purchase_orders',
+  CHANGE_REQUESTS: 'erp_change_requests',
+  QC_RECORDS: 'erp_qc_records',
+  QUOTATIONS: 'erp_quotations',
+  INVOICES: 'erp_invoices',
+  RECEIPTS: 'erp_receipts',
 };
 
 export default function SettingsPage() {
-  const supabase = createClient();
-  const toast = useToast();
-  
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('profile');
-  const [showToken, setShowToken] = useState(false);
-  const [testTargetId, setTestTargetId] = useState('');
-  const [testMessage, setTestMessage] = useState('');
-  const [testing, setTesting] = useState(false);
-  
-  // Profile state
-  const [profile, setProfile] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-    department: '',
-  });
-  
-  // Notification settings state
-  const [notifSettings, setNotifSettings] = useState({
-    email_enabled: true,
-    line_enabled: false,
-    line_user_id: '',
-    low_stock_alert: true,
-    job_complete_alert: true,
-    new_order_alert: true,
-  });
-  
-  // LINE config state (admin only)
-  const [lineConfig, setLineConfig] = useState({
-    channel_access_token: '',
-    channel_secret: '',
-    is_active: true,
-  });
-  
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { stats, resetData } = useERP();
+  const [storageStats, setStorageStats] = useState(getStorageStats());
+  const [showConfirm, setShowConfirm] = useState<'clear' | 'reset' | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const refreshStats = () => {
+    setStorageStats(getStorageStats());
+  };
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  const handleExport = () => {
+    const data: Record<string, any> = {};
+    Object.entries(STORAGE_KEYS).forEach(([key, storageKey]) => {
+      const item = localStorage.getItem(storageKey);
+      if (item) {
+        data[key] = JSON.parse(item);
+      }
+    });
 
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('user_profiles')
-        .select('*, role:roles(name, display_name)')
-        .eq('id', user.id)
-        .single();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `erp-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-      if (profileData) {
-        setProfile({
-          full_name: profileData.full_name || '',
-          email: profileData.email || '',
-          phone: profileData.phone || '',
-          department: profileData.department || '',
+    setMessage({ type: 'success', text: 'ส่งออกข้อมูลสำเร็จ!' });
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        Object.entries(STORAGE_KEYS).forEach(([key, storageKey]) => {
+          if (data[key]) {
+            localStorage.setItem(storageKey, JSON.stringify(data[key]));
+          }
         });
-        setIsAdmin(profileData.role?.name === 'super_admin');
+        refreshStats();
+        setMessage({ type: 'success', text: 'นำเข้าข้อมูลสำเร็จ! กรุณา Refresh หน้า' });
+        setTimeout(() => window.location.reload(), 2000);
+      } catch (error) {
+        setMessage({ type: 'error', text: 'นำเข้าข้อมูลล้มเหลว! ไฟล์ไม่ถูกต้อง' });
+        setTimeout(() => setMessage(null), 3000);
       }
-
-      // Fetch notification settings
-      const { data: notifData } = await supabase
-        .from('notification_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (notifData) {
-        setNotifSettings({
-          email_enabled: notifData.email_enabled ?? true,
-          line_enabled: notifData.line_enabled ?? false,
-          line_user_id: notifData.line_user_id || '',
-          low_stock_alert: notifData.low_stock_alert ?? true,
-          job_complete_alert: notifData.job_complete_alert ?? true,
-          new_order_alert: notifData.new_order_alert ?? true,
-        });
-      }
-
-      // Fetch LINE config (admin only)
-      const { data: lineData } = await supabase
-        .from('line_config')
-        .select('*')
-        .eq('is_active', true)
-        .single();
-
-      if (lineData) {
-        setLineConfig({
-          channel_access_token: lineData.channel_access_token || '',
-          channel_secret: lineData.channel_secret || '',
-          is_active: lineData.is_active ?? true,
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching settings:', err);
-    } finally {
-      setLoading(false);
-    }
+    };
+    reader.readAsText(file);
   };
 
-  const saveProfile = async () => {
-    setSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          full_name: profile.full_name,
-          phone: profile.phone,
-          department: profile.department,
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      toast.success('บันทึกสำเร็จ', 'อัปเดตข้อมูลโปรไฟล์แล้ว');
-    } catch (err: any) {
-      toast.error('เกิดข้อผิดพลาด', err.message);
-    } finally {
-      setSaving(false);
-    }
+  const handleClearAll = () => {
+    clearLocalStorage();
+    refreshStats();
+    setShowConfirm(null);
+    setMessage({ type: 'success', text: 'ลบข้อมูลทั้งหมดแล้ว! กรุณา Refresh หน้า' });
+    setTimeout(() => window.location.reload(), 2000);
   };
 
-  const saveNotificationSettings = async () => {
-    setSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+  const handleReset = () => {
+    resetData();
+    refreshStats();
+    setShowConfirm(null);
+    setMessage({ type: 'success', text: 'รีเซ็ตข้อมูลสำเร็จ! กรุณา Refresh หน้า' });
+    setTimeout(() => window.location.reload(), 2000);
+  };
 
-      // Check if settings exist
-      const { data: existing } = await supabase
-        .from('notification_settings')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
 
-      if (existing) {
-        const { error } = await supabase
-          .from('notification_settings')
-          .update(notifSettings)
-          .eq('user_id', user.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('notification_settings')
-          .insert({ user_id: user.id, ...notifSettings });
-        if (error) throw error;
+  const getTotalSize = () => {
+    let total = 0;
+    Object.values(STORAGE_KEYS).forEach(key => {
+      const item = localStorage.getItem(key);
+      if (item) {
+        total += new Blob([item]).size;
       }
-
-      toast.success('บันทึกสำเร็จ', 'อัปเดตการตั้งค่าแจ้งเตือนแล้ว');
-    } catch (err: any) {
-      toast.error('เกิดข้อผิดพลาด', err.message);
-    } finally {
-      setSaving(false);
-    }
+    });
+    return formatBytes(total);
   };
-
-  const saveLINEConfig = async () => {
-    setSaving(true);
-    try {
-      // Check if config exists
-      const { data: existing } = await supabase
-        .from('line_config')
-        .select('id')
-        .single();
-
-      if (existing) {
-        const { error } = await supabase
-          .from('line_config')
-          .update({
-            channel_access_token: lineConfig.channel_access_token,
-            channel_secret: lineConfig.channel_secret,
-            is_active: lineConfig.is_active,
-          })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('line_config')
-          .insert(lineConfig);
-        if (error) throw error;
-      }
-
-      toast.success('บันทึกสำเร็จ', 'อัปเดตการตั้งค่า LINE แล้ว');
-    } catch (err: any) {
-      toast.error('เกิดข้อผิดพลาด', err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('คัดลอกแล้ว', 'คัดลอกไปยัง Clipboard แล้ว');
-  };
-
-  const testLINEMessage = async () => {
-    if (!testTargetId) {
-      toast.error('กรุณาระบุ ID', 'ใส่ User ID หรือ Group ID ที่ต้องการทดสอบ');
-      return;
-    }
-
-    setTesting(true);
-    try {
-      const response = await fetch('/api/line-test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetId: testTargetId,
-          message: testMessage || undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success('ส่งสำเร็จ! 🎉', data.message);
-      } else {
-        toast.error('ส่งไม่สำเร็จ', data.error || 'เกิดข้อผิดพลาด');
-      }
-    } catch (err: any) {
-      toast.error('เกิดข้อผิดพลาด', err.message);
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const tabs = [
-    { id: 'profile', label: 'โปรไฟล์', icon: User },
-    { id: 'notifications', label: 'การแจ้งเตือน', icon: Bell },
-    ...(isAdmin ? [{ id: 'line', label: 'LINE API', icon: MessageSquare }] : []),
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex-1 min-h-screen bg-[#F5F5F7] flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-4 border-[#E8E8ED] border-t-[#007AFF] animate-spin" />
-      </div>
-    );
-  }
 
   return (
-    <div className="flex-1 min-h-screen bg-[#F5F5F7]">
-      <div className="p-6 lg:p-8 space-y-6">
-        {/* Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-[#86868B]/10 flex items-center justify-center">
-              <Settings className="w-5 h-5 text-[#86868B]" />
+    <div className="min-h-screen bg-[#F5F5F7]">
+      {/* Header */}
+      <div className="bg-white border-b border-[#E8E8ED] sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-[#1D1D1F] flex items-center gap-3">
+                <SettingsIcon className="w-7 h-7 text-[#007AFF]" />
+                ตั้งค่าระบบ
+              </h1>
+              <p className="text-sm text-[#86868B] mt-0.5">จัดการข้อมูลและการตั้งค่า</p>
             </div>
-            <h1 className="text-[28px] font-semibold text-[#1D1D1F]">ตั้งค่า</h1>
           </div>
-          <p className="text-[#86868B]">จัดการโปรไฟล์และการตั้งค่าระบบ</p>
-        </motion.div>
-
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Tabs */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="lg:w-64 flex-shrink-0"
-          >
-            <Card>
-              <CardContent className="p-2">
-                <div className="space-y-1">
-                  {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
-                          activeTab === tab.id
-                            ? 'bg-[#007AFF] text-white'
-                            : 'text-[#1D1D1F] hover:bg-[#F5F5F7]'
-                        }`}
-                      >
-                        <Icon className="w-5 h-5" />
-                        <span className="font-medium">{tab.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Content */}
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="flex-1"
-          >
-            {/* Profile Tab */}
-            {activeTab === 'profile' && (
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>ข้อมูลโปรไฟล์</CardTitle>
-                    <CardDescription>จัดการข้อมูลส่วนตัวของคุณ</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="flex items-center gap-6">
-                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#007AFF] to-[#5AC8FA] flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                        {profile.full_name.charAt(0).toUpperCase() || 'U'}
-                      </div>
-                      <div>
-                        <h3 className="text-[20px] font-semibold text-[#1D1D1F]">{profile.full_name || 'ผู้ใช้งาน'}</h3>
-                        <p className="text-[#86868B]">{profile.email}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">ชื่อ-นามสกุล</label>
-                        <input
-                          type="text"
-                          className="w-full h-11 px-4 rounded-xl bg-white border border-[#D2D2D7] text-[15px] text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]"
-                          value={profile.full_name}
-                          onChange={(e) => setProfile(p => ({ ...p, full_name: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">อีเมล</label>
-                        <input
-                          type="email"
-                          className="w-full h-11 px-4 rounded-xl bg-[#F5F5F7] border border-[#E8E8ED] text-[15px] text-[#86868B] cursor-not-allowed"
-                          value={profile.email}
-                          disabled
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">เบอร์โทร</label>
-                        <input
-                          type="tel"
-                          placeholder="08x-xxx-xxxx"
-                          className="w-full h-11 px-4 rounded-xl bg-white border border-[#D2D2D7] text-[15px] text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]"
-                          value={profile.phone}
-                          onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">แผนก</label>
-                        <input
-                          type="text"
-                          placeholder="ฝ่ายผลิต"
-                          className="w-full h-11 px-4 rounded-xl bg-white border border-[#D2D2D7] text-[15px] text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]"
-                          value={profile.department}
-                          onChange={(e) => setProfile(p => ({ ...p, department: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button variant="primary" onClick={saveProfile} isLoading={saving}>
-                        <Save className="w-4 h-4 mr-2" />
-                        บันทึก
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Notifications Tab */}
-            {activeTab === 'notifications' && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>ช่องทางการแจ้งเตือน</CardTitle>
-                    <CardDescription>เลือกวิธีรับการแจ้งเตือน</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Email */}
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-[#E8E8ED]">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-xl bg-[#007AFF]/10">
-                          <Mail className="w-5 h-5 text-[#007AFF]" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-[#1D1D1F]">อีเมล</p>
-                          <p className="text-[13px] text-[#86868B]">รับแจ้งเตือนทางอีเมล</p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={notifSettings.email_enabled}
-                          onChange={(e) => setNotifSettings(s => ({ ...s, email_enabled: e.target.checked }))}
-                        />
-                        <div className="w-11 h-6 bg-[#E8E8ED] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#34C759]"></div>
-                      </label>
-                    </div>
-
-                    {/* LINE */}
-                    <div className="p-4 rounded-xl border border-[#E8E8ED] space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-[#00C300]/10">
-                            <MessageSquare className="w-5 h-5 text-[#00C300]" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-[#1D1D1F]">LINE</p>
-                            <p className="text-[13px] text-[#86868B]">รับแจ้งเตือนทาง LINE</p>
-                          </div>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={notifSettings.line_enabled}
-                            onChange={(e) => setNotifSettings(s => ({ ...s, line_enabled: e.target.checked }))}
-                          />
-                          <div className="w-11 h-6 bg-[#E8E8ED] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#34C759]"></div>
-                        </label>
-                      </div>
-                      
-                      {notifSettings.line_enabled && (
-                        <div>
-                          <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">
-                            LINE User ID / Group ID
-                            <span className="text-[#86868B] font-normal ml-2">(U... หรือ C...)</span>
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Uxxxx... หรือ Cxxxx..."
-                            className="w-full h-11 px-4 rounded-xl bg-white border border-[#D2D2D7] text-[15px] text-[#1D1D1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]"
-                            value={notifSettings.line_user_id}
-                            onChange={(e) => setNotifSettings(s => ({ ...s, line_user_id: e.target.value }))}
-                          />
-                          <div className="mt-2 p-3 rounded-lg bg-[#F5F5F7] text-[12px] text-[#86868B]">
-                            <p className="font-medium text-[#1D1D1F] mb-1">วิธีรับ ID:</p>
-                            <p>1. เชิญ Bot เข้ากลุ่ม LINE</p>
-                            <p>2. ส่งข้อความอะไรก็ได้ในกลุ่ม</p>
-                            <p>3. Bot จะตอบกลับ Group ID มาให้</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>ประเภทการแจ้งเตือน</CardTitle>
-                    <CardDescription>เลือกแจ้งเตือนที่ต้องการรับ</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* Low Stock */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-[#F5F5F7]">
-                      <div className="flex items-center gap-3">
-                        <Package className="w-5 h-5 text-[#FF9500]" />
-                        <div>
-                          <p className="font-medium text-[#1D1D1F]">สต๊อกต่ำ</p>
-                          <p className="text-[12px] text-[#86868B]">แจ้งเมื่อสินค้าต่ำกว่าจุดสั่งซื้อ</p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={notifSettings.low_stock_alert}
-                          onChange={(e) => setNotifSettings(s => ({ ...s, low_stock_alert: e.target.checked }))}
-                        />
-                        <div className="w-11 h-6 bg-[#D2D2D7] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#34C759]"></div>
-                      </label>
-                    </div>
-
-                    {/* Job Complete */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-[#F5F5F7]">
-                      <div className="flex items-center gap-3">
-                        <Factory className="w-5 h-5 text-[#34C759]" />
-                        <div>
-                          <p className="font-medium text-[#1D1D1F]">งานผลิตเสร็จ</p>
-                          <p className="text-[12px] text-[#86868B]">แจ้งเมื่องานผลิตเสร็จสิ้น</p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={notifSettings.job_complete_alert}
-                          onChange={(e) => setNotifSettings(s => ({ ...s, job_complete_alert: e.target.checked }))}
-                        />
-                        <div className="w-11 h-6 bg-[#D2D2D7] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#34C759]"></div>
-                      </label>
-                    </div>
-
-                    {/* New Order */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-[#F5F5F7]">
-                      <div className="flex items-center gap-3">
-                        <ShoppingCart className="w-5 h-5 text-[#007AFF]" />
-                        <div>
-                          <p className="font-medium text-[#1D1D1F]">ออเดอร์ใหม่</p>
-                          <p className="text-[12px] text-[#86868B]">แจ้งเมื่อมีออเดอร์ใหม่เข้ามา</p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={notifSettings.new_order_alert}
-                          onChange={(e) => setNotifSettings(s => ({ ...s, new_order_alert: e.target.checked }))}
-                        />
-                        <div className="w-11 h-6 bg-[#D2D2D7] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#34C759]"></div>
-                      </label>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="flex justify-end">
-                  <Button variant="primary" onClick={saveNotificationSettings} isLoading={saving}>
-                    <Save className="w-4 h-4 mr-2" />
-                    บันทึกการตั้งค่า
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* LINE API Tab (Admin Only) */}
-            {activeTab === 'line' && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>LINE Messaging API</CardTitle>
-                        <CardDescription>ตั้งค่าการเชื่อมต่อ LINE สำหรับส่งแจ้งเตือน</CardDescription>
-                      </div>
-                      <Badge variant={lineConfig.is_active ? 'success' : 'secondary'} dot>
-                        {lineConfig.is_active ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Status Toggle */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-[#F5F5F7]">
-                      <div>
-                        <p className="font-medium text-[#1D1D1F]">เปิดใช้งาน LINE Messaging</p>
-                        <p className="text-[13px] text-[#86868B]">เปิด/ปิดการส่งแจ้งเตือนผ่าน LINE</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={lineConfig.is_active}
-                          onChange={(e) => setLineConfig(c => ({ ...c, is_active: e.target.checked }))}
-                        />
-                        <div className="w-11 h-6 bg-[#D2D2D7] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#34C759]"></div>
-                      </label>
-                    </div>
-
-                    {/* Channel Access Token */}
-                    <div>
-                      <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">
-                        Channel Access Token
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showToken ? 'text' : 'password'}
-                          placeholder="ใส่ Channel Access Token"
-                          className="w-full h-11 px-4 pr-24 rounded-xl bg-white border border-[#D2D2D7] text-[15px] text-[#1D1D1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]"
-                          value={lineConfig.channel_access_token}
-                          onChange={(e) => setLineConfig(c => ({ ...c, channel_access_token: e.target.value }))}
-                        />
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setShowToken(!showToken)}
-                            className="p-2 text-[#86868B] hover:text-[#1D1D1F]"
-                          >
-                            {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(lineConfig.channel_access_token)}
-                            className="p-2 text-[#86868B] hover:text-[#1D1D1F]"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Channel Secret */}
-                    <div>
-                      <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">
-                        Channel Secret <span className="text-[#86868B] font-normal">(ไม่บังคับ)</span>
-                      </label>
-                      <input
-                        type="password"
-                        placeholder="ใส่ Channel Secret"
-                        className="w-full h-11 px-4 rounded-xl bg-white border border-[#D2D2D7] text-[15px] text-[#1D1D1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]"
-                        value={lineConfig.channel_secret}
-                        onChange={(e) => setLineConfig(c => ({ ...c, channel_secret: e.target.value }))}
-                      />
-                    </div>
-
-                    {/* Help Link */}
-                    <div className="p-4 rounded-xl bg-[#007AFF]/5 border border-[#007AFF]/20">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-[#007AFF] flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-[#1D1D1F]">วิธีรับ Token</p>
-                          <p className="text-[13px] text-[#86868B] mt-1">
-                            1. ไปที่ LINE Developers Console<br />
-                            2. เลือก Messaging API Channel<br />
-                            3. กด Issue ที่ Channel access token
-                          </p>
-                          <a
-                            href="https://developers.line.biz/console/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 mt-3 text-[14px] text-[#007AFF] font-medium hover:underline"
-                          >
-                            ไปที่ LINE Developers Console
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button variant="primary" onClick={saveLINEConfig} isLoading={saving}>
-                        <Save className="w-4 h-4 mr-2" />
-                        บันทึกการตั้งค่า LINE
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Test Message Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>🧪 ทดสอบส่งข้อความ</CardTitle>
-                    <CardDescription>ทดสอบว่าการเชื่อมต่อ LINE ทำงานถูกต้อง</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">
-                        User ID / Group ID ที่ต้องการทดสอบ
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Uxxxx... หรือ Cxxxx..."
-                        className="w-full h-11 px-4 rounded-xl bg-white border border-[#D2D2D7] text-[15px] text-[#1D1D1F] font-mono focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]"
-                        value={testTargetId}
-                        onChange={(e) => setTestTargetId(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[13px] font-medium text-[#1D1D1F] mb-2">
-                        ข้อความทดสอบ <span className="text-[#86868B] font-normal">(ไม่ใส่จะใช้ข้อความเริ่มต้น)</span>
-                      </label>
-                      <textarea
-                        placeholder="ข้อความทดสอบ..."
-                        className="w-full h-24 px-4 py-3 rounded-xl bg-white border border-[#D2D2D7] text-[15px] text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF] resize-none"
-                        value={testMessage}
-                        onChange={(e) => setTestMessage(e.target.value)}
-                      />
-                    </div>
-
-                    <Button 
-                      variant="primary" 
-                      onClick={testLINEMessage} 
-                      disabled={testing || !testTargetId}
-                      className="w-full"
-                    >
-                      {testing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          กำลังส่ง...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" />
-                          ส่งข้อความทดสอบ
-                        </>
-                      )}
-                    </Button>
-
-                    <div className="p-3 rounded-xl bg-[#FF9500]/10 border border-[#FF9500]/20">
-                      <p className="text-[13px] text-[#86868B]">
-                        <strong className="text-[#FF9500]">💡 หมายเหตุ:</strong> ถ้าส่งไปกลุ่ม ต้องเชิญ Bot เข้ากลุ่มก่อน
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </motion.div>
         </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Message */}
+        {message && (
+          <div
+            className={`p-4 rounded-xl flex items-center gap-3 ${
+              message.type === 'success'
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}
+          >
+            {message.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5" />
+            ) : (
+              <AlertTriangle className="w-5 h-5" />
+            )}
+            <span className="font-medium">{message.text}</span>
+          </div>
+        )}
+
+        {/* Storage Stats */}
+        <Card className="p-6 bg-white apple-card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Database className="w-6 h-6 text-[#007AFF]" />
+              <h2 className="text-xl font-bold text-[#1D1D1F]">สถิติการใช้งานข้อมูล</h2>
+            </div>
+            <Button variant="outline" size="sm" onClick={refreshStats}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              รีเฟรช
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 bg-[#F5F5F7] rounded-xl">
+              <p className="text-sm text-[#86868B]">ออเดอร์</p>
+              <p className="text-2xl font-bold text-[#1D1D1F]">{storageStats.orders}</p>
+            </div>
+            <div className="p-4 bg-[#F5F5F7] rounded-xl">
+              <p className="text-sm text-[#86868B]">งานผลิต</p>
+              <p className="text-2xl font-bold text-[#1D1D1F]">{storageStats.productionJobs}</p>
+            </div>
+            <div className="p-4 bg-[#F5F5F7] rounded-xl">
+              <p className="text-sm text-[#86868B]">รายการงาน</p>
+              <p className="text-2xl font-bold text-[#1D1D1F]">{storageStats.workItems}</p>
+            </div>
+            <div className="p-4 bg-[#F5F5F7] rounded-xl">
+              <p className="text-sm text-[#86868B]">ขนาดรวม</p>
+              <p className="text-2xl font-bold text-[#1D1D1F]">{getTotalSize()}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div className="text-sm text-blue-700">
+                <p className="font-medium">ข้อมูลถูกเก็บใน Browser localStorage</p>
+                <p className="mt-1 text-blue-600">
+                  ข้อมูลจะอยู่ไปตลอดจนกว่าจะลบ cache หรือใช้ฟังก์ชัน "ลบข้อมูลทั้งหมด"
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Data Management */}
+        <Card className="p-6 bg-white apple-card">
+          <h2 className="text-xl font-bold text-[#1D1D1F] mb-4 flex items-center gap-3">
+            <Database className="w-6 h-6 text-[#AF52DE]" />
+            จัดการข้อมูล
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Export */}
+            <div className="p-4 border border-[#E8E8ED] rounded-xl">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                  <Download className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#1D1D1F]">ส่งออกข้อมูล</h3>
+                  <p className="text-sm text-[#86868B]">Backup ข้อมูลเป็นไฟล์ JSON</p>
+                </div>
+              </div>
+              <Button className="w-full" variant="outline" onClick={handleExport}>
+                <Download className="w-4 h-4 mr-2" />
+                Export Data
+              </Button>
+            </div>
+
+            {/* Import */}
+            <div className="p-4 border border-[#E8E8ED] rounded-xl">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#1D1D1F]">นำเข้าข้อมูล</h3>
+                  <p className="text-sm text-[#86868B]">Restore จากไฟล์ Backup</p>
+                </div>
+              </div>
+              <label className="w-full">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
+                  className="hidden"
+                />
+                <Button className="w-full" variant="outline" asChild>
+                  <span>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import Data
+                  </span>
+                </Button>
+              </label>
+            </div>
+
+            {/* Reset to Mock */}
+            <div className="p-4 border border-[#E8E8ED] rounded-xl">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#1D1D1F]">รีเซ็ตเป็นข้อมูลตัวอย่าง</h3>
+                  <p className="text-sm text-[#86868B]">คืนค่าเป็น Mock Data</p>
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => setShowConfirm('reset')}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reset to Mock Data
+              </Button>
+            </div>
+
+            {/* Clear All */}
+            <div className="p-4 border border-red-200 rounded-xl bg-red-50">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-red-700">ลบข้อมูลทั้งหมด</h3>
+                  <p className="text-sm text-red-600">ลบข้อมูลถาวร ไม่สามารถกู้คืนได้</p>
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                variant="destructive"
+                onClick={() => setShowConfirm('clear')}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear All Data
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Confirmation Modal */}
+        {showConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full p-6 bg-white">
+              <div className="flex items-center gap-3 mb-4">
+                <AlertTriangle className="w-8 h-8 text-orange-500" />
+                <h3 className="text-xl font-bold text-[#1D1D1F]">ยืนยันการดำเนินการ</h3>
+              </div>
+              <p className="text-[#86868B] mb-6">
+                {showConfirm === 'clear'
+                  ? 'คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลทั้งหมด? ข้อมูลจะหายและไม่สามารถกู้คืนได้'
+                  : 'คุณแน่ใจหรือไม่ว่าต้องการรีเซ็ตข้อมูลเป็นข้อมูลตัวอย่าง? ข้อมูลปัจจุบันจะถูกแทนที่'}
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setShowConfirm(null)} className="flex-1">
+                  ยกเลิก
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={showConfirm === 'clear' ? handleClearAll : handleReset}
+                  className="flex-1"
+                >
+                  {showConfirm === 'clear' ? 'ลบทั้งหมด' : 'รีเซ็ต'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
