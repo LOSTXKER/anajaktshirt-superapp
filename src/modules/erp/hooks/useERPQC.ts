@@ -12,6 +12,30 @@ import type {
 } from '../types/qc';
 import type { PaginationParams } from '../types/common';
 
+// ---------------------------------------------
+// QC CONFIGS
+// ---------------------------------------------
+
+export const QC_RESULT_CONFIG = {
+  pass: { label: 'Pass', label_th: 'ผ่าน', color: 'bg-green-100 text-green-700', icon: '✓' },
+  fail: { label: 'Fail', label_th: 'ไม่ผ่าน', color: 'bg-red-100 text-red-700', icon: '✗' },
+  partial: { label: 'Partial', label_th: 'ผ่านบางส่วน', color: 'bg-yellow-100 text-yellow-700', icon: '⚠' },
+};
+
+export const QC_STAGE_CONFIG = {
+  material_check: { label: 'Material Check', label_th: 'ตรวจวัสดุ', order: 1 },
+  pre_production: { label: 'Pre-Production', label_th: 'ก่อนผลิต', order: 2 },
+  in_process: { label: 'In Process', label_th: 'ระหว่างผลิต', order: 3 },
+  post_production: { label: 'Post-Production', label_th: 'หลังผลิต', order: 4 },
+  final_inspection: { label: 'Final Inspection', label_th: 'ตรวจสอบสุดท้าย', order: 5 },
+};
+
+export const DEFECT_SEVERITY_CONFIG = {
+  critical: { label: 'Critical', label_th: 'ร้ายแรง', color: 'bg-red-100 text-red-700' },
+  major: { label: 'Major', label_th: 'สำคัญ', color: 'bg-orange-100 text-orange-700' },
+  minor: { label: 'Minor', label_th: 'เล็กน้อย', color: 'bg-yellow-100 text-yellow-700' },
+};
+
 export function useERPQCRecords(filters?: QCRecordFilters, pagination?: PaginationParams) {
   const [qcRecords, setQCRecords] = useState<QCRecord[]>([]);
   const [totalCount, setTotalCount] = useState(0);
