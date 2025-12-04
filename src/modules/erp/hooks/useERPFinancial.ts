@@ -1,54 +1,106 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import {
-  mockQuotations,
-  mockInvoices,
-  mockReceipts,
-  getFinancialSummary,
-} from '../mocks/data';
+import { useState, useEffect } from 'react';
+import { supabaseFinancialRepository } from '../repositories/supabase/financialRepository';
 import type {
   Quotation,
   Invoice,
   Receipt,
   FinancialSummary,
-  QuotationFilters,
-  InvoiceFilters,
+  FinancialDocumentStatus,
 } from '../types/financial';
+import type { Pagination } from '../types/common';
+
+// ---------------------------------------------
+// useERPFinancialSummary
+// ---------------------------------------------
+
+export function useERPFinancialSummary() {
+  const [summary, setSummary] = useState<FinancialSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        setLoading(true);
+        const data = await supabaseFinancialRepository.getFinancialSummary();
+        setSummary(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSummary();
+  }, []);
+
+  return { summary, loading, error };
+}
 
 // ---------------------------------------------
 // useERPQuotations
 // ---------------------------------------------
 
-export function useERPQuotations(filters: QuotationFilters = {}) {
+export function useERPQuotations(
+  filters?: { status?: FinancialDocumentStatus; customer_id?: string; search?: string },
+  pagination?: Pagination
+) {
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchQuotations = async () => {
+      try {
+        setLoading(true);
+        const { data, totalCount: count } = await supabaseFinancialRepository.getQuotations(
+          filters,
+          pagination
+        );
+        setQuotations(data);
+        setTotalCount(count);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const quotations = useMemo(() => {
-    let result = [...mockQuotations];
+    fetchQuotations();
+  }, [filters?.status, filters?.customer_id, filters?.search, pagination?.page, pagination?.pageSize]);
 
-    if (filters.status) {
-      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
-      result = result.filter(q => statuses.includes(q.status));
+  const createQuotation = async (input: Omit<Quotation, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const newQuotation = await supabaseFinancialRepository.createQuotation(input);
+      setQuotations(prev => [newQuotation, ...prev]);
+      return newQuotation;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
+  };
 
-    if (filters.customer_id) {
-      result = result.filter(q => q.customer_id === filters.customer_id);
+  const updateQuotation = async (id: string, updates: Partial<Quotation>) => {
+    try {
+      const updated = await supabaseFinancialRepository.updateQuotation(id, updates);
+      setQuotations(prev => prev.map(q => q.id === id ? updated : q));
+      return updated;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
-
-    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    return result;
-  }, [filters]);
+  };
 
   return {
     quotations,
+    totalCount,
     loading,
-    total: quotations.length,
+    error,
+    createQuotation,
+    updateQuotation,
   };
 }
 
@@ -56,47 +108,64 @@ export function useERPQuotations(filters: QuotationFilters = {}) {
 // useERPInvoices
 // ---------------------------------------------
 
-export function useERPInvoices(filters: InvoiceFilters = {}) {
+export function useERPInvoices(
+  filters?: { status?: FinancialDocumentStatus; customer_id?: string; order_id?: string; search?: string },
+  pagination?: Pagination
+) {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchInvoices = async () => {
+      try {
+        setLoading(true);
+        const { data, totalCount: count } = await supabaseFinancialRepository.getInvoices(
+          filters,
+          pagination
+        );
+        setInvoices(data);
+        setTotalCount(count);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const invoices = useMemo(() => {
-    let result = [...mockInvoices];
+    fetchInvoices();
+  }, [filters?.status, filters?.customer_id, filters?.order_id, filters?.search, pagination?.page, pagination?.pageSize]);
 
-    if (filters.status) {
-      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
-      result = result.filter(inv => statuses.includes(inv.status));
+  const createInvoice = async (input: Omit<Invoice, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const newInvoice = await supabaseFinancialRepository.createInvoice(input);
+      setInvoices(prev => [newInvoice, ...prev]);
+      return newInvoice;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
+  };
 
-    if (filters.order_id) {
-      result = result.filter(inv => inv.order_id === filters.order_id);
+  const updateInvoice = async (id: string, updates: Partial<Invoice>) => {
+    try {
+      const updated = await supabaseFinancialRepository.updateInvoice(id, updates);
+      setInvoices(prev => prev.map(inv => inv.id === id ? updated : inv));
+      return updated;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
-
-    if (filters.customer_id) {
-      result = result.filter(inv => inv.customer_id === filters.customer_id);
-    }
-
-    if (filters.is_overdue) {
-      result = result.filter(inv => inv.status === 'overdue');
-    }
-
-    if (filters.is_tax_invoice !== undefined) {
-      result = result.filter(inv => inv.is_tax_invoice === filters.is_tax_invoice);
-    }
-
-    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    return result;
-  }, [filters]);
+  };
 
   return {
     invoices,
+    totalCount,
     loading,
-    total: invoices.length,
+    error,
+    createInvoice,
+    updateInvoice,
   };
 }
 
@@ -104,76 +173,54 @@ export function useERPInvoices(filters: InvoiceFilters = {}) {
 // useERPReceipts
 // ---------------------------------------------
 
-export function useERPReceipts(orderId?: string) {
+export function useERPReceipts(
+  filters?: { customer_id?: string; invoice_id?: string; order_id?: string; search?: string },
+  pagination?: Pagination
+) {
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchReceipts = async () => {
+      try {
+        setLoading(true);
+        const { data, totalCount: count } = await supabaseFinancialRepository.getReceipts(
+          filters,
+          pagination
+        );
+        setReceipts(data);
+        setTotalCount(count);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const receipts = useMemo(() => {
-    let result = [...mockReceipts];
+    fetchReceipts();
+  }, [filters?.customer_id, filters?.invoice_id, filters?.order_id, filters?.search, pagination?.page, pagination?.pageSize]);
 
-    if (orderId) {
-      result = result.filter(r => r.order_id === orderId);
+  const createReceipt = async (input: Omit<Receipt, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const newReceipt = await supabaseFinancialRepository.createReceipt(input);
+      setReceipts(prev => [newReceipt, ...prev]);
+
+      // Also update the corresponding invoice
+      // This would trigger a refetch in useERPInvoices
+      return newReceipt;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
-
-    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    return result;
-  }, [orderId]);
+  };
 
   return {
     receipts,
+    totalCount,
     loading,
-    total: receipts.length,
+    error,
+    createReceipt,
   };
 }
-
-// ---------------------------------------------
-// useERPFinancialSummary
-// ---------------------------------------------
-
-export function useERPFinancialSummary() {
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<FinancialSummary | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSummary(getFinancialSummary());
-      setLoading(false);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  return {
-    summary,
-    loading,
-  };
-}
-
-// ---------------------------------------------
-// Status Configs
-// ---------------------------------------------
-
-export const QUOTATION_STATUS_CONFIG = {
-  draft: { label: 'Draft', label_th: 'แบบร่าง', color: 'bg-gray-100 text-gray-700' },
-  sent: { label: 'Sent', label_th: 'ส่งแล้ว', color: 'bg-blue-100 text-blue-700' },
-  viewed: { label: 'Viewed', label_th: 'ดูแล้ว', color: 'bg-cyan-100 text-cyan-700' },
-  accepted: { label: 'Accepted', label_th: 'ยอมรับ', color: 'bg-green-100 text-green-700' },
-  rejected: { label: 'Rejected', label_th: 'ปฏิเสธ', color: 'bg-red-100 text-red-700' },
-  expired: { label: 'Expired', label_th: 'หมดอายุ', color: 'bg-gray-100 text-gray-500' },
-  converted: { label: 'Converted', label_th: 'แปลงเป็นออเดอร์', color: 'bg-purple-100 text-purple-700' },
-} as const;
-
-export const INVOICE_STATUS_CONFIG = {
-  draft: { label: 'Draft', label_th: 'แบบร่าง', color: 'bg-gray-100 text-gray-700' },
-  sent: { label: 'Sent', label_th: 'ส่งแล้ว', color: 'bg-blue-100 text-blue-700' },
-  partial: { label: 'Partial', label_th: 'จ่ายบางส่วน', color: 'bg-yellow-100 text-yellow-700' },
-  paid: { label: 'Paid', label_th: 'จ่ายแล้ว', color: 'bg-green-100 text-green-700' },
-  overdue: { label: 'Overdue', label_th: 'เกินกำหนด', color: 'bg-red-100 text-red-700' },
-  cancelled: { label: 'Cancelled', label_th: 'ยกเลิก', color: 'bg-gray-100 text-gray-500' },
-  refunded: { label: 'Refunded', label_th: 'คืนเงินแล้ว', color: 'bg-orange-100 text-orange-700' },
-} as const;
-
