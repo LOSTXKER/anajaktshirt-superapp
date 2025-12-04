@@ -124,6 +124,18 @@ CREATE TABLE customers (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Enable RLS for customers
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated users to read customers" ON customers;
+CREATE POLICY "Allow authenticated users to read customers" ON customers FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow authenticated users to insert customers" ON customers;
+CREATE POLICY "Allow authenticated users to insert customers" ON customers FOR INSERT TO authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow authenticated users to update customers" ON customers;
+CREATE POLICY "Allow authenticated users to update customers" ON customers FOR UPDATE TO authenticated USING (true);
+
 -- Orders
 CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -259,6 +271,12 @@ CREATE TABLE priority_levels (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Enable RLS for priority_levels
+ALTER TABLE priority_levels ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all users to read priority_levels" ON priority_levels;
+CREATE POLICY "Allow all users to read priority_levels" ON priority_levels FOR SELECT USING (true);
 
 -- Seed Priority Levels
 INSERT INTO priority_levels (code, name, name_th, description, surcharge_percent, lead_time_modifier, sort_order) VALUES
@@ -481,6 +499,12 @@ CREATE TABLE IF NOT EXISTS work_types (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Enable RLS for work_types
+ALTER TABLE work_types ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all users to read work_types" ON work_types;
+CREATE POLICY "Allow all users to read work_types" ON work_types FOR SELECT USING (true);
+
 CREATE TABLE IF NOT EXISTS order_types (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code VARCHAR(50) UNIQUE NOT NULL,
@@ -494,6 +518,12 @@ CREATE TABLE IF NOT EXISTS order_types (
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Enable RLS for order_types
+ALTER TABLE order_types ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all users to read order_types" ON order_types;
+CREATE POLICY "Allow all users to read order_types" ON order_types FOR SELECT USING (true);
 
 -- Products (เสื้อเปล่า) - Extended for Stock Module
 DROP TABLE IF EXISTS products CASCADE;

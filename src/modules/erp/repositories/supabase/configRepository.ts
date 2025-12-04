@@ -50,12 +50,19 @@ function dbToWorkType(row: Tables<'work_types'>): WorkType {
     id: row.id,
     code: row.code,
     name: row.name,
+    name_th: row.name, // Use name as name_th since DB only has name in Thai
     category: row.category as WorkType['category'],
-    base_price: row.base_price,
-    requires_design: row.requires_design,
+    category_code: row.category as WorkType['category'], // Alias for UI compatibility
+    base_price: row.base_price || 0,
+    requires_design: row.requires_design || false,
+    requires_material: false,
     default_production_mode: row.default_production_mode as WorkType['default_production_mode'],
-    estimated_days: row.estimated_days,
-    is_active: row.is_active,
+    estimated_days: row.estimated_days || 1,
+    estimated_minutes_per_unit: (row.estimated_days || 1) * 60, // Convert days to minutes approx
+    can_outsource: row.default_production_mode === 'outsource',
+    in_house_capable: row.default_production_mode === 'in_house',
+    is_active: row.is_active ?? true,
+    sort_order: 0,
     created_at: row.created_at,
   };
 }
