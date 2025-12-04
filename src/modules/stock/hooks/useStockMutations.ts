@@ -23,19 +23,20 @@ export function useStockMutations() {
       // Get current product quantity
       const { data: product, error: fetchError } = await supabase
         .from('products')
-        .select('quantity')
+        .select('stock_qty')
         .eq('id', productId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      const newQuantity = (product?.quantity || 0) + quantity;
+      const newQuantity = (product?.stock_qty || 0) + quantity;
 
       // Update product quantity
       const { error: updateError } = await supabase
         .from('products')
         .update({ 
-          quantity: newQuantity,
+          stock_qty: newQuantity,
+          in_stock: newQuantity > 0,
           updated_at: new Date().toISOString()
         })
         .eq('id', productId);
@@ -91,13 +92,13 @@ export function useStockMutations() {
       // Get current product quantity
       const { data: product, error: fetchError } = await supabase
         .from('products')
-        .select('quantity')
+        .select('stock_qty')
         .eq('id', productId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      const currentQty = product?.quantity || 0;
+      const currentQty = product?.stock_qty || 0;
       if (currentQty < quantity) {
         throw new Error(`สต๊อกไม่พอ (มี ${currentQty} ต้องการเบิก ${quantity})`);
       }
@@ -108,7 +109,8 @@ export function useStockMutations() {
       const { error: updateError } = await supabase
         .from('products')
         .update({ 
-          quantity: newQuantity,
+          stock_qty: newQuantity,
+          in_stock: newQuantity > 0,
           updated_at: new Date().toISOString()
         })
         .eq('id', productId);
@@ -163,20 +165,21 @@ export function useStockMutations() {
       // Get current product quantity
       const { data: product, error: fetchError } = await supabase
         .from('products')
-        .select('quantity')
+        .select('stock_qty')
         .eq('id', productId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      const currentQty = product?.quantity || 0;
+      const currentQty = product?.stock_qty || 0;
       const difference = newQuantity - currentQty;
 
       // Update product quantity
       const { error: updateError } = await supabase
         .from('products')
         .update({ 
-          quantity: newQuantity,
+          stock_qty: newQuantity,
+          in_stock: newQuantity > 0,
           updated_at: new Date().toISOString()
         })
         .eq('id', productId);
