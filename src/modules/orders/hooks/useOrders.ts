@@ -125,45 +125,65 @@ export function useOrder(orderId: string | null) {
         .eq('id', orderId)
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.warn('Order fetch error:', orderError.message);
+        setError(orderError.message);
+        setOrder(null);
+        return;
+      }
 
-      // Fetch work items separately
-      const { data: workItems } = await supabase
-        .from('order_work_items')
-        .select('*')
-        .eq('order_id', orderId);
+      // Fetch related data - errors are non-fatal
+      let workItems: any[] = [];
+      let payments: any[] = [];
+      let designs: any[] = [];
+      let mockups: any[] = [];
 
-      // Fetch payments separately
-      const { data: payments } = await supabase
-        .from('order_payments')
-        .select('*')
-        .eq('order_id', orderId);
+      try {
+        const { data } = await supabase
+          .from('order_work_items')
+          .select('*')
+          .eq('order_id', orderId);
+        workItems = data || [];
+      } catch (e) { /* ignore */ }
 
-      // Fetch designs separately
-      const { data: designs } = await supabase
-        .from('order_designs')
-        .select('*')
-        .eq('order_id', orderId);
+      try {
+        const { data } = await supabase
+          .from('order_payments')
+          .select('*')
+          .eq('order_id', orderId);
+        payments = data || [];
+      } catch (e) { /* ignore */ }
 
-      // Fetch mockups separately
-      const { data: mockups } = await supabase
-        .from('order_mockups')
-        .select('*')
-        .eq('order_id', orderId);
+      try {
+        const { data } = await supabase
+          .from('order_designs')
+          .select('*')
+          .eq('order_id', orderId);
+        designs = data || [];
+      } catch (e) { /* ignore */ }
+
+      try {
+        const { data } = await supabase
+          .from('order_mockups')
+          .select('*')
+          .eq('order_id', orderId);
+        mockups = data || [];
+      } catch (e) { /* ignore */ }
 
       // Combine all data
       const fullOrder = {
         ...orderData,
-        work_items: workItems || [],
-        payments: payments || [],
-        designs: designs || [],
-        mockups: mockups || [],
+        work_items: workItems,
+        payments: payments,
+        designs: designs,
+        mockups: mockups,
       };
 
       setOrder(fullOrder as Order);
+      setError(null);
     } catch (err: any) {
-      console.error('Error fetching order:', err);
-      setError(err.message || 'Failed to fetch order');
+      console.warn('Order fetch failed:', err?.message || 'Unknown error');
+      setError(err?.message || 'Failed to fetch order');
     } finally {
       setLoading(false);
     }
