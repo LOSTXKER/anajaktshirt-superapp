@@ -769,12 +769,12 @@ DROP POLICY IF EXISTS "Allow all for authenticated users" ON stock_reservations;
 
 -- Create policies
 CREATE POLICY "Allow all for authenticated users" ON customers FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all for authenticated users" ON orders FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all for authenticated users" ON order_work_items FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all for authenticated users" ON order_payments FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow all for authenticated users" ON orders FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated users" ON order_work_items FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated users" ON order_payments FOR ALL TO authenticated USING (true);
 CREATE POLICY "Allow all for authenticated users" ON production_jobs FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON suppliers FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all for authenticated users" ON purchase_orders FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow all for authenticated users" ON purchase_orders FOR ALL TO authenticated USING (true);
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
