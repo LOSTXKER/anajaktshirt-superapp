@@ -626,7 +626,7 @@ DROP INDEX IF EXISTS idx_notifications_user_id;
 DROP INDEX IF EXISTS idx_notifications_is_read;
 DROP INDEX IF EXISTS idx_notifications_created_at;
 DROP INDEX IF EXISTS idx_products_model;
-DROP INDEX IF EXISTS idx_products_deleted_at;
+-- DROP INDEX IF EXISTS idx_products_deleted_at; -- Removed: products no longer has soft delete
 DROP INDEX IF EXISTS idx_transactions_product_id;
 DROP INDEX IF EXISTS idx_transactions_created_at;
 DROP INDEX IF EXISTS idx_reservations_job_id;
@@ -666,7 +666,7 @@ CREATE INDEX idx_audit_logs_entity_type ON audit_logs(entity_type);
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 
 CREATE INDEX idx_products_model ON products(model);
-CREATE INDEX idx_products_deleted_at ON products(deleted_at);
+-- CREATE INDEX idx_products_deleted_at ON products(deleted_at); -- Removed: products no longer has soft delete
 CREATE INDEX idx_transactions_product_id ON transactions(product_id);
 CREATE INDEX idx_transactions_created_at ON transactions(created_at);
 CREATE INDEX idx_reservations_job_id ON stock_reservations(job_id);
