@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, Input, Modal, useToast, QuantityInput, PriceInput } from '@/modules/shared/ui';
+import { Button, Card, Input, Modal, useToast, QuantityInput, PriceInput, Dropdown } from '@/modules/shared/ui';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -514,42 +514,39 @@ export default function CreateOrderPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                   <div>
                     <label className="block text-xs text-[#86868B] mb-1">ประเภทงาน</label>
-                    <select
+                    <Dropdown
                       value={item.work_type_code}
-                      onChange={(e) => updateWorkItem(item.id, 'work_type_code', e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-[#E8E8ED] rounded-lg text-[#1D1D1F] text-sm"
-                    >
-                      <option value="">เลือกประเภทงาน</option>
-                      {workTypes.map((wt) => (
-                        <option key={wt.code} value={wt.code}>{wt.name_th}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => updateWorkItem(item.id, 'work_type_code', val)}
+                      options={[
+                        { value: '', label: 'เลือกประเภทงาน' },
+                        ...workTypes.map((wt) => ({ value: wt.code, label: wt.name_th }))
+                      ]}
+                      placeholder="เลือกประเภทงาน"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs text-[#86868B] mb-1">ตำแหน่ง</label>
-                    <select
+                    <Dropdown
                       value={item.position_code}
-                      onChange={(e) => updateWorkItem(item.id, 'position_code', e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-[#E8E8ED] rounded-lg text-[#1D1D1F] text-sm"
-                    >
-                      <option value="">เลือกตำแหน่ง</option>
-                      {positions.map((pos) => (
-                        <option key={pos.code} value={pos.code}>{pos.name_th}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => updateWorkItem(item.id, 'position_code', val)}
+                      options={[
+                        { value: '', label: 'เลือกตำแหน่ง' },
+                        ...positions.map((pos) => ({ value: pos.code, label: pos.name_th }))
+                      ]}
+                      placeholder="เลือกตำแหน่ง"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs text-[#86868B] mb-1">ขนาดพิมพ์</label>
-                    <select
+                    <Dropdown
                       value={item.print_size_code}
-                      onChange={(e) => updateWorkItem(item.id, 'print_size_code', e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-[#E8E8ED] rounded-lg text-[#1D1D1F] text-sm"
-                    >
-                      <option value="">เลือกขนาด</option>
-                      {sizes.map((size) => (
-                        <option key={size.code} value={size.code}>{size.name}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => updateWorkItem(item.id, 'print_size_code', val)}
+                      options={[
+                        { value: '', label: 'เลือกขนาด' },
+                        ...sizes.map((size) => ({ value: size.code, label: size.name }))
+                      ]}
+                      placeholder="เลือกขนาด"
+                    />
                   </div>
                 </div>
 
@@ -575,7 +572,7 @@ export default function CreateOrderPage() {
                   </div>
                   <div className="md:col-span-1">
                     <label className="block text-xs text-[#86868B] mb-1">รวม</label>
-                    <div className="px-3 py-2 bg-[#333] rounded-lg text-[#1D1D1F] text-sm">
+                    <div className="px-3 py-2 bg-[#007AFF] rounded-lg text-white text-sm font-medium">
                       ฿{(item.quantity * item.unit_price).toLocaleString()}
                     </div>
                   </div>
@@ -670,31 +667,33 @@ export default function CreateOrderPage() {
             </div>
             <div>
               <label className="block text-sm text-[#86868B] mb-1">ช่องทางขาย</label>
-              <select
+              <Dropdown
                 value={orderInfo.sales_channel}
-                onChange={(e) => setOrderInfo({ ...orderInfo, sales_channel: e.target.value })}
-                className="w-full px-3 py-2 bg-[#F5F5F7] border border-[#E8E8ED] rounded-lg text-[#1D1D1F]"
-              >
-                <option value="">เลือกช่องทาง</option>
-                <option value="line">LINE</option>
-                <option value="facebook">Facebook</option>
-                <option value="instagram">Instagram</option>
-                <option value="phone">โทรศัพท์</option>
-                <option value="walk_in">Walk-in</option>
-                <option value="website">Website</option>
-              </select>
+                onChange={(val) => setOrderInfo({ ...orderInfo, sales_channel: val })}
+                options={[
+                  { value: '', label: 'เลือกช่องทาง' },
+                  { value: 'line', label: 'LINE' },
+                  { value: 'facebook', label: 'Facebook' },
+                  { value: 'instagram', label: 'Instagram' },
+                  { value: 'phone', label: 'โทรศัพท์' },
+                  { value: 'walk_in', label: 'Walk-in' },
+                  { value: 'website', label: 'Website' },
+                ]}
+                placeholder="เลือกช่องทาง"
+              />
             </div>
             <div>
               <label className="block text-sm text-[#86868B] mb-1">เงื่อนไขชำระเงิน</label>
-              <select
+              <Dropdown
                 value={orderInfo.payment_terms}
-                onChange={(e) => setOrderInfo({ ...orderInfo, payment_terms: e.target.value })}
-                className="w-full px-3 py-2 bg-[#F5F5F7] border border-[#E8E8ED] rounded-lg text-[#1D1D1F]"
-              >
-                <option value="full">ชำระเต็มจำนวน</option>
-                <option value="50_50">มัดจำ 50%</option>
-                <option value="30_70">มัดจำ 30%</option>
-              </select>
+                onChange={(val) => setOrderInfo({ ...orderInfo, payment_terms: val })}
+                options={[
+                  { value: 'full', label: 'ชำระเต็มจำนวน' },
+                  { value: '50_50', label: 'มัดจำ 50%' },
+                  { value: '30_70', label: 'มัดจำ 30%' },
+                ]}
+                placeholder="เลือกเงื่อนไข"
+              />
             </div>
             <div>
               <label className="block text-sm text-[#86868B] mb-1">หมายเหตุจากลูกค้า</label>
