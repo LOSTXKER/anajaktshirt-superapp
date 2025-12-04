@@ -13,4 +13,5 @@ export * from './change-requests';
 export * from './qc';
 export * from './addons';
 export * from './common';
+export * from './config';
 
