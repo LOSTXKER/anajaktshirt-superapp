@@ -61,11 +61,13 @@ const DEFAULT_STATS: DashboardStats = {
   },
   production: {
     total_jobs: 0,
-    active_jobs: 0,
     pending_jobs: 0,
+    in_progress_jobs: 0,
     completed_today: 0,
+    total_qty_pending: 0,
+    total_qty_completed_today: 0,
     on_time_rate: 0,
-    stations: {},
+    rework_rate: 0,
   },
   suppliers: {
     total: 0,

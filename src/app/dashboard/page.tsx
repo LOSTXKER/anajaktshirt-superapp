@@ -179,7 +179,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <StatCard
                     label="กำลังผลิต"
-                    value={stats?.production.active_jobs || 0}
+                    value={stats?.production.in_progress_jobs || 0}
                     color="text-[#007AFF]"
                     href="/production?status=in_progress"
                     small

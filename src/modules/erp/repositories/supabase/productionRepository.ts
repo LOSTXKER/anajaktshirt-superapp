@@ -301,13 +301,7 @@ export class SupabaseProductionRepository {
 
   // ==================== STATISTICS ====================
 
-  async getProductionStats(): Promise<{
-    total_jobs: number;
-    pending: number;
-    in_progress: number;
-    completed_today: number;
-    overdue: number;
-  }> {
+  async getStats(): Promise<import('../../types/production').ProductionStats> {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
@@ -316,12 +310,12 @@ export class SupabaseProductionRepository {
       .from('production_jobs')
       .select('*', { count: 'exact', head: true });
 
-    const { count: pending } = await this.supabase
+    const { count: pending_jobs } = await this.supabase
       .from('production_jobs')
       .select('*', { count: 'exact', head: true })
       .in('status', ['pending', 'queued']);
 
-    const { count: in_progress } = await this.supabase
+    const { count: in_progress_jobs } = await this.supabase
       .from('production_jobs')
       .select('*', { count: 'exact', head: true })
       .in('status', ['assigned', 'in_progress']);
@@ -333,18 +327,33 @@ export class SupabaseProductionRepository {
       .gte('completed_at', todayStart)
       .lt('completed_at', todayEnd);
 
-    const { count: overdue } = await this.supabase
+    // Calculate total qty pending (sum of total_qty for pending/in_progress jobs)
+    const { data: pendingQtyData } = await this.supabase
       .from('production_jobs')
-      .select('*', { count: 'exact', head: true })
-      .lt('due_date', now.toISOString())
-      .not('status', 'in', '(completed,cancelled)');
+      .select('total_qty')
+      .in('status', ['pending', 'queued', 'assigned', 'in_progress']);
+    
+    const total_qty_pending = pendingQtyData?.reduce((sum, job) => sum + (job.total_qty || 0), 0) || 0;
+
+    // Calculate total qty completed today
+    const { data: completedQtyData } = await this.supabase
+      .from('production_jobs')
+      .select('completed_qty')
+      .eq('status', 'completed')
+      .gte('completed_at', todayStart)
+      .lt('completed_at', todayEnd);
+
+    const total_qty_completed_today = completedQtyData?.reduce((sum, job) => sum + (job.completed_qty || 0), 0) || 0;
 
     return {
       total_jobs: total_jobs || 0,
-      pending: pending || 0,
-      in_progress: in_progress || 0,
+      pending_jobs: pending_jobs || 0,
+      in_progress_jobs: in_progress_jobs || 0,
       completed_today: completed_today || 0,
-      overdue: overdue || 0,
+      total_qty_pending,
+      total_qty_completed_today,
+      on_time_rate: 100, // TODO: Calculate real on-time rate
+      rework_rate: 0, // TODO: Calculate real rework rate
     };
   }
 }
