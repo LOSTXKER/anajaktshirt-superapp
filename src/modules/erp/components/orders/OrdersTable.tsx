@@ -161,9 +161,11 @@ function getStatusIcon(status: OrderStatus) {
 // Priority Badge Component
 // ---------------------------------------------
 
-function PriorityBadge({ code }: { code: PriorityCode }) {
-  const config = PRIORITY_CONFIG[code];
-  if (code === 'normal') return null;
+function PriorityBadge({ code }: { code?: PriorityCode | string | null }) {
+  if (!code || code === 'normal') return null;
+  
+  const config = PRIORITY_CONFIG[code as PriorityCode];
+  if (!config) return null;
   
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${config.bgColor} ${config.color}`}>
@@ -177,7 +179,8 @@ function PriorityBadge({ code }: { code: PriorityCode }) {
 // Production Mode Badge Component
 // ---------------------------------------------
 
-function ProductionModeBadge({ mode }: { mode: string }) {
+function ProductionModeBadge({ mode }: { mode?: string | null }) {
+  if (!mode) return null;
   if (mode === 'in_house') {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
