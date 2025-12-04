@@ -535,6 +535,21 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Audit Logs
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  action VARCHAR(50) NOT NULL,
+  entity_type VARCHAR(50) NOT NULL,
+  entity_id UUID,
+  old_data JSONB,
+  new_data JSONB,
+  details TEXT,
+  ip_address VARCHAR(50),
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==================== INDEXES ====================
 
 DROP INDEX IF EXISTS idx_orders_customer_id;
@@ -585,6 +600,10 @@ CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX idx_notifications_created_at ON notifications(created_at);
 
+CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_entity_type ON audit_logs(entity_type);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+
 CREATE INDEX idx_products_model ON products(model);
 CREATE INDEX idx_products_deleted_at ON products(deleted_at);
 CREATE INDEX idx_transactions_product_id ON transactions(product_id);
@@ -603,6 +622,7 @@ ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_reservations ENABLE ROW LEVEL SECURITY;
@@ -622,6 +642,8 @@ DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
 DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
+DROP POLICY IF EXISTS "Allow authenticated users to view audit logs" ON audit_logs;
+DROP POLICY IF EXISTS "Allow authenticated users to insert audit logs" ON audit_logs;
 DROP POLICY IF EXISTS "Allow all for authenticated users" ON products;
 DROP POLICY IF EXISTS "Allow all for authenticated users" ON transactions;
 DROP POLICY IF EXISTS "Allow all for authenticated users" ON stock_reservations;
@@ -638,6 +660,8 @@ CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.ui
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Allow authenticated users to view audit logs" ON audit_logs FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated users to insert audit logs" ON audit_logs FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON products FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON transactions FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON stock_reservations FOR ALL USING (auth.role() = 'authenticated');
