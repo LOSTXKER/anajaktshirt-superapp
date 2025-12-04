@@ -1,19 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  mockCustomers,
-  mockProducts,
-  mockWorkTypes,
-  mockAddonTypes,
-  mockPrintPositions,
-  mockPrintSizes,
-  mockOrderTypes,
-  mockPriorityLevels,
-  mockSalesChannels,
-  mockWorkDependencies,
-  mockOrderTypeRequiredWorks,
-} from '../mocks/data';
+import { supabaseConfigRepository } from '../repositories/supabase';
 import type { Customer, Product, PrintPosition, PrintSize, OrderType, PriorityLevel } from '../types/config';
 import type { WorkType, WorkDependency, OrderTypeRequiredWork } from '../types/orders';
 import type { AddonType } from '../types/addons';
@@ -30,47 +18,43 @@ interface UseERPCustomersOptions {
 }
 
 export function useERPCustomers(options: UseERPCustomersOptions = {}) {
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulate loading
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchCustomers = async () => {
+      try {
+        setLoading(true);
+        const { data } = await supabaseConfigRepository.findCustomers(
+          {
+            search: options.search,
+            tier: options.tier,
+          },
+          { page: 0, pageSize: 1000 }
+        );
+        setCustomers(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Filter customers
-  const customers = useMemo(() => {
-    let result = [...mockCustomers];
+    fetchCustomers();
+  }, [options.search, options.tier]);
 
-    if (options.search) {
-      const searchLower = options.search.toLowerCase();
-      result = result.filter(
-        (c) =>
-          c.name.toLowerCase().includes(searchLower) ||
-          c.code.toLowerCase().includes(searchLower) ||
-          c.phone?.includes(options.search!) ||
-          c.email?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (options.tier) {
-      result = result.filter((c) => c.tier === options.tier);
-    }
-
-    if (options.isActive !== undefined) {
-      result = result.filter((c) => c.is_active === options.isActive);
-    }
-
-    return result;
-  }, [options.search, options.tier, options.isActive]);
-
-  const getCustomerById = useCallback((id: string): Customer | undefined => {
-    return mockCustomers.find((c) => c.id === id);
-  }, []);
+  const getCustomerById = useCallback(
+    (id: string): Customer | undefined => {
+      return customers.find((c) => c.id === id);
+    },
+    [customers]
+  );
 
   return {
     customers,
     loading,
+    error,
     getCustomerById,
   };
 }
@@ -89,72 +73,62 @@ interface UseERPProductsOptions {
 }
 
 export function useERPProducts(options: UseERPProductsOptions = {}) {
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulate loading
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const { data } = await supabaseConfigRepository.findProducts(
+          {
+            search: options.search,
+            model: options.model,
+            color: options.color,
+            size: options.size,
+          },
+          { page: 0, pageSize: 1000 }
+        );
+        setProducts(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Filter products
-  const products = useMemo(() => {
-    let result = [...mockProducts];
-
-    if (options.search) {
-      const searchLower = options.search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchLower) ||
-          p.sku.toLowerCase().includes(searchLower) ||
-          p.model.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (options.category) {
-      result = result.filter((p) => p.category === options.category);
-    }
-
-    if (options.model) {
-      result = result.filter((p) => p.model === options.model);
-    }
-
-    if (options.color) {
-      result = result.filter((p) => p.color === options.color);
-    }
-
-    if (options.size) {
-      result = result.filter((p) => p.size === options.size);
-    }
-
-    if (options.inStock) {
-      result = result.filter((p) => p.available_qty > 0);
-    }
-
-    return result;
-  }, [options.search, options.category, options.model, options.color, options.size, options.inStock]);
+    fetchProducts();
+  }, [options.search, options.model, options.color, options.size]);
 
   // Get unique values for filters
   const filterOptions = useMemo(() => {
-    const models = [...new Set(mockProducts.map((p) => p.model))];
-    const colors = [...new Set(mockProducts.map((p) => p.color))];
-    const sizes = [...new Set(mockProducts.map((p) => p.size))];
-    const categories = [...new Set(mockProducts.map((p) => p.category))];
+    const models = [...new Set(products.map((p) => p.model))];
+    const colors = [...new Set(products.map((p) => p.color))];
+    const sizes = [...new Set(products.map((p) => p.size))];
+    const categories = [...new Set(products.map((p) => p.category))];
 
     return { models, colors, sizes, categories };
-  }, []);
+  }, [products]);
 
-  const getProductById = useCallback((id: string): Product | undefined => {
-    return mockProducts.find((p) => p.id === id);
-  }, []);
+  const getProductById = useCallback(
+    (id: string): Product | undefined => {
+      return products.find((p) => p.id === id);
+    },
+    [products]
+  );
 
-  const getProductBySku = useCallback((sku: string): Product | undefined => {
-    return mockProducts.find((p) => p.sku === sku);
-  }, []);
+  const getProductBySku = useCallback(
+    (sku: string): Product | undefined => {
+      return products.find((p) => p.sku === sku);
+    },
+    [products]
+  );
 
   return {
     products,
     loading,
+    error,
     filterOptions,
     getProductById,
     getProductBySku,
@@ -166,27 +140,41 @@ export function useERPProducts(options: UseERPProductsOptions = {}) {
 // ---------------------------------------------
 
 export function useERPWorkTypes() {
+  const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 200);
-    return () => clearTimeout(timer);
+    const fetchWorkTypes = async () => {
+      try {
+        setLoading(true);
+        const { data } = await supabaseConfigRepository.findWorkTypes({}, { page: 0, pageSize: 1000 });
+        setWorkTypes(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWorkTypes();
   }, []);
 
-  const workTypes = mockWorkTypes;
-
-  const getWorkTypeByCode = useCallback((code: string): WorkType | undefined => {
-    return mockWorkTypes.find((wt) => wt.code === code);
-  }, []);
+  const getWorkTypeByCode = useCallback(
+    (code: string): WorkType | undefined => {
+      return workTypes.find((wt) => wt.code === code);
+    },
+    [workTypes]
+  );
 
   // Group by category
   const workTypesByCategory = useMemo(() => {
     const grouped: Record<string, WorkType[]> = {};
     workTypes.forEach((wt) => {
-      if (!grouped[wt.category_code]) {
-        grouped[wt.category_code] = [];
+      if (!grouped[wt.category]) {
+        grouped[wt.category] = [];
       }
-      grouped[wt.category_code].push(wt);
+      grouped[wt.category].push(wt);
     });
     return grouped;
   }, [workTypes]);
@@ -194,6 +182,7 @@ export function useERPWorkTypes() {
   return {
     workTypes,
     loading,
+    error,
     getWorkTypeByCode,
     workTypesByCategory,
   };
@@ -204,18 +193,23 @@ export function useERPWorkTypes() {
 // ---------------------------------------------
 
 export function useERPAddonTypes() {
+  const [addonTypes, setAddonTypes] = useState<AddonType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 200);
-    return () => clearTimeout(timer);
+    // TODO: Implement in configRepository
+    // For now, return empty
+    setAddonTypes([]);
+    setLoading(false);
   }, []);
 
-  const addonTypes = mockAddonTypes;
-
-  const getAddonTypeByCode = useCallback((code: string): AddonType | undefined => {
-    return mockAddonTypes.find((at) => at.code === code);
-  }, []);
+  const getAddonTypeByCode = useCallback(
+    (code: string): AddonType | undefined => {
+      return addonTypes.find((at) => at.code === code);
+    },
+    [addonTypes]
+  );
 
   // Group by category
   const addonTypesByCategory = useMemo(() => {
@@ -232,6 +226,7 @@ export function useERPAddonTypes() {
   return {
     addonTypes,
     loading,
+    error,
     getAddonTypeByCode,
     addonTypesByCategory,
   };
@@ -242,19 +237,26 @@ export function useERPAddonTypes() {
 // ---------------------------------------------
 
 export function useERPPrintConfig() {
+  const [positions, setPositions] = useState<PrintPosition[]>([]);
+  const [sizes, setSizes] = useState<PrintSize[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 200);
-    return () => clearTimeout(timer);
+    // TODO: Implement in configRepository
+    // For now, return empty
+    setPositions([]);
+    setSizes([]);
+    setLoading(false);
   }, []);
 
   return {
-    positions: mockPrintPositions,
-    sizes: mockPrintSizes,
+    positions,
+    sizes,
     loading,
-    getPositionByCode: (code: string) => mockPrintPositions.find((p) => p.code === code),
-    getSizeByCode: (code: string) => mockPrintSizes.find((s) => s.code === code),
+    error,
+    getPositionByCode: (code: string) => positions.find((p) => p.code === code),
+    getSizeByCode: (code: string) => sizes.find((s) => s.code === code),
   };
 }
 
@@ -263,20 +265,39 @@ export function useERPPrintConfig() {
 // ---------------------------------------------
 
 export function useERPOrderConfig() {
+  const [orderTypes, setOrderTypes] = useState<OrderType[]>([]);
+  const [priorityLevels, setPriorityLevels] = useState<PriorityLevel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 200);
-    return () => clearTimeout(timer);
+    const fetchOrderConfig = async () => {
+      try {
+        setLoading(true);
+        const { data } = await supabaseConfigRepository.findOrderTypes({}, { page: 0, pageSize: 100 });
+        setOrderTypes(data);
+        // TODO: Fetch priority levels from DB
+        setPriorityLevels([]);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderConfig();
   }, []);
 
+  const salesChannels = ['LINE', 'Facebook', 'Instagram', 'Website', 'Walk-in', 'Phone'];
+
   return {
-    orderTypes: mockOrderTypes,
-    priorityLevels: mockPriorityLevels,
-    salesChannels: mockSalesChannels,
+    orderTypes,
+    priorityLevels,
+    salesChannels,
     loading,
-    getOrderTypeByCode: (code: string) => mockOrderTypes.find((ot) => ot.code === code),
-    getPriorityByCode: (code: string) => mockPriorityLevels.find((p) => p.code === code),
+    error,
+    getOrderTypeByCode: (code: string) => orderTypes.find((ot) => ot.code === code),
+    getPriorityByCode: (code: string) => priorityLevels.find((p) => p.code === code),
   };
 }
 
@@ -285,49 +306,23 @@ export function useERPOrderConfig() {
 // ---------------------------------------------
 
 export function useERPWorkDependencies(orderTypeCode: string) {
+  const [dependencies, setDependencies] = useState<WorkDependency[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 200);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Get order type requirements
-  const orderTypeConfig = useMemo(() => {
-    return mockOrderTypeRequiredWorks.find((c) => c.order_type_code === orderTypeCode);
+    // TODO: Implement work dependencies in database
+    // For now, return empty
+    setDependencies([]);
+    setLoading(false);
   }, [orderTypeCode]);
 
-  // Get dependencies for this order type
-  const dependencies = useMemo(() => {
-    return mockWorkDependencies.filter(
-      (d) => d.order_types.length === 0 || d.order_types.includes(orderTypeCode)
-    );
-  }, [orderTypeCode]);
+  const { workTypes } = useERPWorkTypes();
 
-  // Filter work types based on order type
-  const availableWorkTypes = useMemo(() => {
-    if (!orderTypeConfig) return mockWorkTypes;
-
-    return mockWorkTypes.filter(
-      (wt) => !orderTypeConfig.excluded_work_types.includes(wt.code)
-    );
-  }, [orderTypeConfig]);
-
-  // Get required work types
-  const requiredWorkTypes = useMemo(() => {
-    if (!orderTypeConfig) return [];
-    return mockWorkTypes.filter((wt) =>
-      orderTypeConfig.required_work_types.includes(wt.code)
-    );
-  }, [orderTypeConfig]);
-
-  // Get suggested work types
-  const suggestedWorkTypes = useMemo(() => {
-    if (!orderTypeConfig) return [];
-    return mockWorkTypes.filter((wt) =>
-      orderTypeConfig.suggested_work_types.includes(wt.code)
-    );
-  }, [orderTypeConfig]);
+  // For now, all work types are available
+  const availableWorkTypes = workTypes;
+  const requiredWorkTypes: WorkType[] = [];
+  const suggestedWorkTypes: WorkType[] = [];
 
   // Get dependencies for a specific work type
   const getDependenciesFor = useCallback(
@@ -363,59 +358,13 @@ export function useERPWorkDependencies(orderTypeCode: string) {
   // Build workflow order from selected work items
   const buildWorkflowOrder = useCallback(
     (workItems: string[]): { code: string; order: number; parallel: string[] }[] => {
-      const result: { code: string; order: number; parallel: string[] }[] = [];
-      const processed = new Set<string>();
-      let currentOrder = 1;
-
-      // Helper to add work item with correct order
-      const addWithOrder = (code: string) => {
-        if (processed.has(code)) return;
-
-        const dep = getDependenciesFor(code);
-        
-        // First add dependencies
-        if (dep) {
-          dep.depends_on.forEach((depCode) => {
-            if (workItems.includes(depCode) && !processed.has(depCode)) {
-              addWithOrder(depCode);
-            }
-          });
-        }
-
-        // Find parallel items
-        const parallelItems = dep?.can_parallel_with.filter(
-          (p) => workItems.includes(p) && !processed.has(p)
-        ) || [];
-
-        // Add this item
-        result.push({
-          code,
-          order: currentOrder,
-          parallel: parallelItems,
-        });
-        processed.add(code);
-
-        // Add parallel items with same order
-        parallelItems.forEach((p) => {
-          if (!processed.has(p)) {
-            result.push({
-              code: p,
-              order: currentOrder,
-              parallel: [code],
-            });
-            processed.add(p);
-          }
-        });
-
-        currentOrder++;
-      };
-
-      // Process all work items
-      workItems.forEach(addWithOrder);
-
-      return result.sort((a, b) => a.order - b.order);
+      return workItems.map((code, index) => ({
+        code,
+        order: index + 1,
+        parallel: [],
+      }));
     },
-    [getDependenciesFor]
+    []
   );
 
   // Work categories for grouping
@@ -423,7 +372,8 @@ export function useERPWorkDependencies(orderTypeCode: string) {
 
   return {
     loading,
-    orderTypeConfig,
+    error,
+    orderTypeConfig: null,
     dependencies,
     availableWorkTypes,
     requiredWorkTypes,
@@ -435,4 +385,3 @@ export function useERPWorkDependencies(orderTypeCode: string) {
     buildWorkflowOrder,
   };
 }
-
