@@ -19,7 +19,10 @@ import {
   Bell,
   History,
   Calculator,
-  ShoppingCart
+  ShoppingCart,
+  DollarSign,
+  Truck,
+  ClipboardList,
 } from 'lucide-react';
 import { createClient } from '@/modules/shared/services/supabase-client';
 import { useRouter } from 'next/navigation';
@@ -63,6 +66,24 @@ const sidebarItems = [
     href: '/production',
     icon: Factory,
     color: 'text-[#FF9500]',
+  },
+  {
+    title: 'คิวผลิต',
+    href: '/production/queue',
+    icon: ClipboardList,
+    color: 'text-[#AF52DE]',
+  },
+  {
+    title: 'การเงิน',
+    href: '/finance',
+    icon: DollarSign,
+    color: 'text-[#34C759]',
+  },
+  {
+    title: 'Suppliers',
+    href: '/suppliers',
+    icon: Truck,
+    color: 'text-[#007AFF]',
   },
   {
     title: 'ลูกค้าสัมพันธ์',
