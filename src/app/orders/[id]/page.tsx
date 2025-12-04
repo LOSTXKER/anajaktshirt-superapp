@@ -354,7 +354,9 @@ export default function OrderDetailPage() {
   } = useOrderMutations();
 
   // UI State
-  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'design' | 'mockup' | 'payments' | 'production' | 'cost' | 'timeline' | 'events' | 'actions' | 'documents' | 'notifications' | 'notes' | 'history'>('details');
+  // Simplified tabs - grouped by purpose
+  const [activeTab, setActiveTab] = useState<'overview' | 'work' | 'finance' | 'manage' | 'records'>('overview');
+  const [activeSubTab, setActiveSubTab] = useState<string>('details');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
   const [statusReason, setStatusReason] = useState('');
@@ -369,7 +371,7 @@ export default function OrderDetailPage() {
     let isMounted = true;
     
     const fetchProductionJobs = async () => {
-      if (activeTab === 'production' && orderId && !loadingProduction) {
+      if (activeSubTab === 'production' && orderId && !loadingProduction) {
         setLoadingProduction(true);
         const result = await getProductionJobs(orderId);
         if (isMounted && result.success && result.jobs) {
@@ -605,7 +607,14 @@ export default function OrderDetailPage() {
       <div className="mb-6">
         <OrderProgressBarFull 
           status={order.status} 
-          onTabChange={(tab) => setActiveTab(tab as any)}
+          onTabChange={(tab) => {
+            // Map old tab to new structure
+            if (tab === 'details') { setActiveTab('overview'); setActiveSubTab('details'); }
+            else if (tab === 'payments') { setActiveTab('finance'); setActiveSubTab('payments'); }
+            else if (tab === 'design') { setActiveTab('work'); setActiveSubTab('design'); }
+            else if (tab === 'production') { setActiveTab('work'); setActiveSubTab('production'); }
+            else setActiveSubTab(tab);
+          }}
           onStatusChange={async (newStatus) => {
             const result = await updateOrderStatus(orderId, newStatus as OrderStatus, '');
             if (result.success) {
@@ -618,43 +627,152 @@ export default function OrderDetailPage() {
         />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 overflow-x-auto pb-2 bg-white rounded-xl p-1 border border-[#E8E8ED]">
+      {/* Main Tabs - Simplified to 5 */}
+      <div className="flex gap-2 mb-4 overflow-x-auto">
         {[
-          { key: 'details', label: 'ข้อมูลทั่วไป', icon: FileText },
-          { key: 'items', label: 'รายการงาน', icon: Package },
-          { key: 'design', label: 'งานออกแบบ', icon: Image },
-          { key: 'mockup', label: 'Mockup', icon: Image },
-          { key: 'production', label: 'การผลิต', icon: Factory },
-          { key: 'payments', label: 'การชำระเงิน', icon: DollarSign },
-          { key: 'cost', label: 'ต้นทุน', icon: Calculator },
-          { key: 'timeline', label: 'Timeline', icon: Calendar },
-          { key: 'events', label: 'เหตุการณ์', icon: AlertCircle },
-          { key: 'actions', label: 'จัดการ', icon: Zap },
-          { key: 'documents', label: 'เอกสาร', icon: FileText },
-          { key: 'notifications', label: 'แจ้งเตือน', icon: Bell },
-          { key: 'notes', label: 'หมายเหตุ', icon: MessageSquare },
-          { key: 'history', label: 'ประวัติ', icon: Clock },
+          { key: 'overview', label: 'ภาพรวม', icon: FileText, color: 'blue' },
+          { key: 'work', label: 'งาน', icon: Palette, color: 'purple' },
+          { key: 'finance', label: 'การเงิน', icon: DollarSign, color: 'green' },
+          { key: 'manage', label: 'จัดการ', icon: Zap, color: 'orange' },
+          { key: 'records', label: 'บันทึก', icon: Clock, color: 'gray' },
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+            onClick={() => {
+              setActiveTab(tab.key as any);
+              // Reset subtab when changing main tab
+              if (tab.key === 'overview') setActiveSubTab('details');
+              if (tab.key === 'work') setActiveSubTab('design');
+              if (tab.key === 'finance') setActiveSubTab('payments');
+              if (tab.key === 'manage') setActiveSubTab('actions');
+              if (tab.key === 'records') setActiveSubTab('notes');
+            }}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
               activeTab === tab.key
-                ? 'bg-[#007AFF] text-white'
-                : 'text-[#86868B] hover:bg-[#F5F5F7] hover:text-[#1D1D1F]'
+                ? 'bg-[#007AFF] text-white shadow-lg shadow-blue-200'
+                : 'bg-white text-[#86868B] hover:bg-[#F5F5F7] hover:text-[#1D1D1F] border border-[#E8E8ED]'
             }`}
           >
-            <tab.icon className="w-4 h-4" />
+            <tab.icon className="w-5 h-5" />
             {tab.label}
           </button>
         ))}
       </div>
 
+      {/* Sub Tabs - Context based on main tab */}
+      {activeTab === 'overview' && (
+        <div className="flex gap-1 mb-6 bg-[#F5F5F7] rounded-lg p-1">
+          {[
+            { key: 'details', label: 'ข้อมูลออเดอร์' },
+            { key: 'items', label: 'รายการงาน' },
+          ].map((sub) => (
+            <button
+              key={sub.key}
+              onClick={() => setActiveSubTab(sub.key)}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeSubTab === sub.key
+                  ? 'bg-white text-[#1D1D1F] shadow-sm'
+                  : 'text-[#86868B] hover:text-[#1D1D1F]'
+              }`}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'work' && (
+        <div className="flex gap-1 mb-6 bg-[#F5F5F7] rounded-lg p-1">
+          {[
+            { key: 'design', label: 'งานออกแบบ' },
+            { key: 'mockup', label: 'Mockup' },
+            { key: 'production', label: 'การผลิต' },
+          ].map((sub) => (
+            <button
+              key={sub.key}
+              onClick={() => setActiveSubTab(sub.key)}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeSubTab === sub.key
+                  ? 'bg-white text-[#1D1D1F] shadow-sm'
+                  : 'text-[#86868B] hover:text-[#1D1D1F]'
+              }`}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'finance' && (
+        <div className="flex gap-1 mb-6 bg-[#F5F5F7] rounded-lg p-1">
+          {[
+            { key: 'payments', label: 'การชำระเงิน' },
+            { key: 'cost', label: 'ต้นทุน/กำไร' },
+            { key: 'documents', label: 'เอกสาร' },
+          ].map((sub) => (
+            <button
+              key={sub.key}
+              onClick={() => setActiveSubTab(sub.key)}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeSubTab === sub.key
+                  ? 'bg-white text-[#1D1D1F] shadow-sm'
+                  : 'text-[#86868B] hover:text-[#1D1D1F]'
+              }`}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'manage' && (
+        <div className="flex gap-1 mb-6 bg-[#F5F5F7] rounded-lg p-1">
+          {[
+            { key: 'actions', label: 'จัดการสถานะ' },
+            { key: 'events', label: 'เหตุการณ์' },
+            { key: 'timeline', label: 'Timeline' },
+            { key: 'notifications', label: 'แจ้งเตือน' },
+          ].map((sub) => (
+            <button
+              key={sub.key}
+              onClick={() => setActiveSubTab(sub.key)}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeSubTab === sub.key
+                  ? 'bg-white text-[#1D1D1F] shadow-sm'
+                  : 'text-[#86868B] hover:text-[#1D1D1F]'
+              }`}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'records' && (
+        <div className="flex gap-1 mb-6 bg-[#F5F5F7] rounded-lg p-1">
+          {[
+            { key: 'notes', label: 'หมายเหตุ' },
+            { key: 'history', label: 'ประวัติ' },
+          ].map((sub) => (
+            <button
+              key={sub.key}
+              onClick={() => setActiveSubTab(sub.key)}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeSubTab === sub.key
+                  ? 'bg-white text-[#1D1D1F] shadow-sm'
+                  : 'text-[#86868B] hover:text-[#1D1D1F]'
+              }`}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Tab Content */}
       <div className="space-y-6">
         {/* Details Tab */}
-        {activeTab === 'details' && (
+        {activeSubTab === 'details' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Customer Info */}
             <Card className="p-6 bg-white border border-[#E8E8ED]">
@@ -793,7 +911,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Items Tab */}
-        {activeTab === 'items' && (
+        {activeSubTab === 'items' && (
           <Card className="p-6 bg-white border border-[#E8E8ED]">
             <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4">รายการงาน ({order.work_items?.length || 0} รายการ)</h3>
             
@@ -913,7 +1031,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Design Tab */}
-        {activeTab === 'design' && (
+        {activeSubTab === 'design' && (
           <Card className="p-6 bg-white border border-[#E8E8ED]">
             <DesignManager
               orderId={orderId}
@@ -924,7 +1042,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Mockup Tab */}
-        {activeTab === 'mockup' && (
+        {activeSubTab === 'mockup' && (
           <Card className="p-6 bg-white border border-[#E8E8ED]">
             <MockupManager
               orderId={orderId}
@@ -938,7 +1056,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Production Tab */}
-        {activeTab === 'production' && (
+        {activeSubTab === 'production' && (
           <Card className="p-6 bg-white border border-[#E8E8ED]">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-[#1D1D1F]">สถานะการผลิต</h3>
@@ -1060,7 +1178,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Payments Tab */}
-        {activeTab === 'payments' && (
+        {activeSubTab === 'payments' && (
           <Card className="p-6 bg-white border border-[#E8E8ED]">
             <PaymentManager
               order={order as Order}
@@ -1071,7 +1189,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Cost Tab */}
-        {activeTab === 'cost' && (
+        {activeSubTab === 'cost' && (
           <CostBreakdown
             orderId={orderId}
             totalRevenue={order.total_amount}
@@ -1083,7 +1201,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Timeline Tab */}
-        {activeTab === 'timeline' && (
+        {activeSubTab === 'timeline' && (
           <SLATimeline
             orderId={orderId}
             currentStatus={order.status}
@@ -1097,7 +1215,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Events Tab */}
-        {activeTab === 'events' && (
+        {activeSubTab === 'events' && (
           <OrderEvents
             order={order as Order}
             onAddEvent={async (event) => {
@@ -1114,7 +1232,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Actions Tab */}
-        {activeTab === 'actions' && (
+        {activeSubTab === 'actions' && (
           <QuickActions
             order={order as Order}
             onStatusChange={async (newStatus, reason) => {
@@ -1131,12 +1249,12 @@ export default function OrderDetailPage() {
         )}
 
         {/* Documents Tab */}
-        {activeTab === 'documents' && (
+        {activeSubTab === 'documents' && (
           <DocumentGenerator order={order as Order} />
         )}
 
         {/* Notifications Tab */}
-        {activeTab === 'notifications' && (
+        {activeSubTab === 'notifications' && (
           <NotificationCenter
             order={order as Order}
             onSendNotification={async (type, channel, message) => {
@@ -1148,7 +1266,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* Notes Tab */}
-        {activeTab === 'notes' && (
+        {activeSubTab === 'notes' && (
           <Card className="p-6 bg-white border border-[#E8E8ED]">
             <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4">หมายเหตุภายใน</h3>
             
@@ -1187,7 +1305,7 @@ export default function OrderDetailPage() {
         )}
 
         {/* History Tab */}
-        {activeTab === 'history' && (
+        {activeSubTab === 'history' && (
           <Card className="p-6 bg-white border border-[#E8E8ED]">
             <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4">ประวัติการเปลี่ยนแปลง</h3>
             
