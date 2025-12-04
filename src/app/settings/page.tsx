@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Button, Badge } from '@/modules/shared/ui';
 import {
   Settings as SettingsIcon,
@@ -37,12 +37,28 @@ const STORAGE_KEYS = {
 
 export default function SettingsPage() {
   const { stats, resetData } = useERP();
-  const [storageStats, setStorageStats] = useState(getStorageStats());
+  const [storageStats, setStorageStats] = useState<Record<string, number>>({
+    orders: 0,
+    workItems: 0,
+    productionJobs: 0,
+    changeRequests: 0,
+    qcRecords: 0,
+    invoices: 0,
+  });
   const [showConfirm, setShowConfirm] = useState<'clear' | 'reset' | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Load stats on client-side only
+  useEffect(() => {
+    setIsClient(true);
+    setStorageStats(getStorageStats());
+  }, []);
 
   const refreshStats = () => {
-    setStorageStats(getStorageStats());
+    if (typeof window !== 'undefined') {
+      setStorageStats(getStorageStats());
+    }
   };
 
   const handleExport = () => {
