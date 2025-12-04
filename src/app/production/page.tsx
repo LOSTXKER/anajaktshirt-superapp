@@ -28,8 +28,12 @@ import {
   useERPProductionStations,
   useERPProductionStats,
   useERPProductionMutations,
+  useERPQCRecords,
+  QCStatsOverview,
+  QCRecordCard,
 } from '@/modules/erp';
 import type { ProductionJob, ProductionJobStatus } from '@/modules/erp';
+import { ClipboardCheck } from 'lucide-react';
 
 // Work Type Config
 const WORK_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
@@ -87,6 +91,10 @@ export default function ProductionPage() {
   const { stations } = useERPProductionStations();
   const { stats, refetch: refetchStats } = useERPProductionStats();
   const { updateJobStatus, assignJob, loading: mutationLoading } = useERPProductionMutations();
+  const { records: qcRecords, stats: qcStats } = useERPQCRecords({ has_failures: false });
+  
+  // UI State
+  const [showQCPanel, setShowQCPanel] = useState(false);
 
   // Modals
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -196,6 +204,14 @@ export default function ProductionPage() {
 
             <div className="flex gap-2">
               <Button
+                variant={showQCPanel ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => setShowQCPanel(!showQCPanel)}
+              >
+                <ClipboardCheck className="w-4 h-4 mr-2" />
+                QC {qcStats?.pending_qc ? `(${qcStats.pending_qc})` : ''}
+              </Button>
+              <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => { refetch(); refetchStats(); }}
@@ -277,6 +293,41 @@ export default function ProductionPage() {
             </div>
           </Card>
         </div>
+
+        {/* QC Panel */}
+        {showQCPanel && (
+          <div className="mb-6 space-y-4">
+            <Card className="p-4 bg-white apple-card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-[#1D1D1F] flex items-center gap-2">
+                  <ClipboardCheck className="w-5 h-5 text-[#007AFF]" />
+                  QC Overview
+                </h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowQCPanel(false)}>
+                  ปิด
+                </Button>
+              </div>
+              
+              {qcStats && <QCStatsOverview stats={qcStats} />}
+            </Card>
+
+            {qcRecords.length > 0 && (
+              <Card className="p-4 bg-white apple-card">
+                <h4 className="text-sm font-medium text-[#86868B] mb-3">QC Records ล่าสุด</h4>
+                <div className="space-y-2">
+                  {qcRecords.slice(0, 3).map((record) => (
+                    <QCRecordCard
+                      key={record.id}
+                      record={record}
+                      compact
+                      onClick={() => console.log('View QC:', record.id)}
+                    />
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* Filters */}
         <Card className="p-4 bg-white apple-card mb-6">

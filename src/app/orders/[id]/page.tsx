@@ -35,20 +35,26 @@ import {
   Shield,
 } from 'lucide-react';
 import { Button, Card, Input, Modal, useToast } from '@/modules/shared/ui';
-import {
+import { 
   useERPOrder,
   useERPWorkItems,
   useERPPayments,
   useERPOrderDesignFlow,
-  ORDER_STATUS_CONFIG,
+  useERPChangeRequests,
+  useERPQCForOrder,
+  ORDER_STATUS_CONFIG, 
   PAYMENT_STATUS_CONFIG,
   DesignSummaryCard,
   DesignVersionCard,
   ApprovalGatesSummary,
   CompactGatesProgress,
   MockupApprovalCard,
+  ChangeRequestCard,
+  QCRecordCard,
+  QCSummaryCard,
 } from '@/modules/erp';
 import type { Order, OrderStatus, OrderWorkItem, OrderPayment } from '@/modules/erp';
+import { RefreshCw, ClipboardCheck } from 'lucide-react';
 
 // ---------------------------------------------
 // Main Component
@@ -58,6 +64,8 @@ const TABS = [
   { key: 'details', label: 'ข้อมูลทั่วไป', icon: FileText },
   { key: 'items', label: 'รายการงาน', icon: Package },
   { key: 'design', label: 'ออกแบบ & อนุมัติ', icon: Palette },
+  { key: 'changes', label: 'แก้ไข/เปลี่ยนแปลง', icon: RefreshCw },
+  { key: 'qc', label: 'QC', icon: ClipboardCheck },
   { key: 'payments', label: 'การชำระเงิน', icon: CreditCard },
   { key: 'production', label: 'การผลิต', icon: Factory },
   { key: 'history', label: 'ประวัติ', icon: Clock },
@@ -79,6 +87,8 @@ export default function OrderDetailPage() {
     summary: designSummary, 
     loading: designLoading 
   } = useERPOrderDesignFlow(orderId);
+  const { changeRequests, stats: crStats } = useERPChangeRequests({ order_id: orderId });
+  const { records: qcRecords, summary: qcSummary } = useERPQCForOrder(orderId);
 
   // UI State
   const [activeTab, setActiveTab] = useState<string>('details');
@@ -198,7 +208,7 @@ export default function OrderDetailPage() {
                   <h1 className="text-xl font-bold text-[#1D1D1F]">{order.order_number}</h1>
 <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
                     {statusConfig.label_th}
-                  </span>
+            </span>
             {isOverdue && (
                     <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-600 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
@@ -256,7 +266,7 @@ export default function OrderDetailPage() {
           </div>
 <div className="text-xs text-[#86868B] mt-0.5">
               {paymentStatusConfig.label_th}
-            </div>
+          </div>
         </Card>
         
           <Card className="p-4 bg-white apple-card">
@@ -346,7 +356,7 @@ export default function OrderDetailPage() {
                         </span>
                       }
                     />
-                  )}
+                )}
               </div>
             </Card>
 
@@ -433,7 +443,7 @@ export default function OrderDetailPage() {
                   <div className="flex justify-between text-sm">
                   <span className="text-[#86868B]">ใบกำกับภาษี</span>
                   <span className="text-[#1D1D1F]">{order.needs_tax_invoice ? 'ต้องการ' : 'ไม่ต้องการ'}</span>
-                  </div>
+                </div>
                 </div>
 
                 {order.customer_note && (
@@ -461,19 +471,19 @@ export default function OrderDetailPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-[#86868B]">ยอดรวมสินค้า/บริการ</span>
                     <span>{formatCurrency(order.pricing?.subtotal)}</span>
-                  </div>
+                </div>
                   {(order.pricing?.discount_amount ?? 0) > 0 && (
                     <div className="flex justify-between text-sm text-[#34C759]">
                       <span>ส่วนลด</span>
                       <span>-{formatCurrency(order.pricing?.discount_amount)}</span>
-                    </div>
-                  )}
+                  </div>
+                )}
                   {(order.pricing?.surcharge_amount ?? 0) > 0 && (
                     <div className="flex justify-between text-sm text-[#FF9500]">
                       <span>ค่าเร่งด่วน</span>
                       <span>+{formatCurrency(order.pricing?.surcharge_amount)}</span>
-                    </div>
-                  )}
+                  </div>
+                )}
                   {(order.pricing?.shipping_cost ?? 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-[#86868B]">ค่าจัดส่ง</span>
@@ -539,6 +549,119 @@ export default function OrderDetailPage() {
             />
           )}
 
+          {/* Change Requests Tab */}
+          {activeTab === 'changes' && (
+            <div className="space-y-6">
+              {/* Stats */}
+              {crStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="p-4 bg-white apple-card">
+                    <div className="text-2xl font-bold text-[#1D1D1F]">{changeRequests.length}</div>
+                    <div className="text-xs text-[#86868B]">คำขอทั้งหมด</div>
+                  </Card>
+                  <Card className="p-4 bg-[#FF9500]/10 apple-card">
+                    <div className="text-2xl font-bold text-[#FF9500]">
+                      {changeRequests.filter(cr => ['pending_quote', 'awaiting_customer', 'in_progress'].includes(cr.status)).length}
+                            </div>
+                    <div className="text-xs text-[#FF9500]">รอดำเนินการ</div>
+                  </Card>
+                  <Card className="p-4 bg-[#34C759]/10 apple-card">
+                    <div className="text-2xl font-bold text-[#34C759]">
+                      {changeRequests.filter(cr => cr.status === 'completed').length}
+                          </div>
+                    <div className="text-xs text-[#34C759]">เสร็จสิ้น</div>
+                  </Card>
+                  <Card className="p-4 bg-white apple-card">
+                    <div className="text-2xl font-bold text-[#FF9500]">
+                      {formatCurrency(changeRequests.reduce((sum, cr) => sum + cr.fees.total_fee, 0))}
+                        </div>
+                    <div className="text-xs text-[#86868B]">ค่าใช้จ่ายเพิ่ม</div>
+                  </Card>
+                        </div>
+              )}
+
+              {/* Change Request List */}
+              <Card className="p-6 bg-white apple-card">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#1D1D1F] flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-[#FF9500]" />
+                    คำขอแก้ไข/เปลี่ยนแปลง
+                  </h3>
+                  <Button size="sm" className="gap-2">
+                    <RefreshCw className="w-4 h-4" />
+                    สร้างคำขอใหม่
+                  </Button>
+                            </div>
+
+                {changeRequests.length === 0 ? (
+                  <div className="text-center py-12 text-[#86868B]">
+                    <RefreshCw className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>ยังไม่มีคำขอแก้ไข</p>
+                    <p className="text-sm mt-1">ลูกค้าสามารถขอแก้ไขได้ที่นี่</p>
+                            </div>
+                ) : (
+                  <div className="space-y-3">
+                    {changeRequests.map((cr) => (
+                      <ChangeRequestCard
+                        key={cr.id}
+                        changeRequest={cr}
+                        onClick={() => console.log('View CR:', cr.id)}
+                      />
+                    ))}
+                            </div>
+                )}
+              </Card>
+                          </div>
+          )}
+
+          {/* QC Tab */}
+          {activeTab === 'qc' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* QC Records */}
+              <div className="lg:col-span-2 space-y-4">
+                <Card className="p-6 bg-white apple-card">
+                  <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4 flex items-center gap-2">
+                    <ClipboardCheck className="w-5 h-5 text-[#007AFF]" />
+                    ประวัติ QC ({qcRecords.length} รายการ)
+                  </h3>
+
+                  {qcRecords.length === 0 ? (
+                    <div className="text-center py-12 text-[#86868B]">
+                      <ClipboardCheck className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>ยังไม่มีรายการ QC</p>
+                      <p className="text-sm mt-1">QC จะถูกบันทึกเมื่อเริ่มผลิต</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {qcRecords.map((record) => (
+                        <QCRecordCard
+                          key={record.id}
+                          record={record}
+                          onClick={() => console.log('View QC:', record.id)}
+                        />
+                      ))}
+                            </div>
+                          )}
+                </Card>
+              </div>
+
+              {/* QC Summary */}
+                                    <div>
+                {qcSummary ? (
+                  <QCSummaryCard summary={qcSummary} />
+                ) : (
+                  <Card className="p-6 bg-white apple-card">
+                    <h3 className="text-lg font-semibold text-[#1D1D1F] mb-4">สรุป QC</h3>
+                    <div className="text-center py-8 text-[#86868B]">
+                      <ClipboardCheck className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>ยังไม่มีข้อมูล</p>
+                                    </div>
+                  </Card>
+                )}
+                              </div>
+                            </div>
+                          )}
+
           {/* Payments Tab */}
           {activeTab === 'payments' && (
             <Card className="p-6 bg-white apple-card">
@@ -550,16 +673,16 @@ export default function OrderDetailPage() {
                   <span className="text-[#86868B]">ชำระแล้ว </span>
                   <span className={order.payment_status === 'paid' ? 'text-[#34C759] font-bold' : 'text-[#FF9500] font-bold'}>
                     {formatCurrency(order.paid_amount)}
-                  </span>
+                                    </span>
                   <span className="text-[#86868B]"> / {formatCurrency(order.pricing?.total_amount)}</span>
-                </div>
-              </div>
+                                  </div>
+                              </div>
 
               {payments.length === 0 ? (
                 <div className="text-center py-12 text-[#86868B]">
                   <CreditCard className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>ยังไม่มีการชำระเงิน</p>
-                </div>
+                            </div>
               ) : (
                 <div className="space-y-3">
                   {payments.map((payment) => (
@@ -570,8 +693,8 @@ export default function OrderDetailPage() {
                       formatDateTime={formatDateTime}
                     />
                   ))}
-                </div>
-              )}
+                        </div>
+                      )}
 
               {/* Payment Progress */}
               {order.pricing?.total_amount && order.pricing.total_amount > 0 && (
@@ -581,7 +704,7 @@ export default function OrderDetailPage() {
                     <span className="font-medium">
                       {Math.round(((order.paid_amount || 0) / order.pricing.total_amount) * 100)}%
                     </span>
-                  </div>
+                    </div>
                   <div className="h-2 bg-[#E8E8ED] rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-500 ${
@@ -592,10 +715,10 @@ export default function OrderDetailPage() {
                       style={{ width: `${Math.min(100, ((order.paid_amount || 0) / order.pricing.total_amount) * 100)}%` }}
                     />
                   </div>
-                </div>
-              )}
-            </Card>
-          )}
+              </div>
+            )}
+          </Card>
+        )}
 
           {/* Production Tab */}
           {activeTab === 'production' && (
@@ -639,8 +762,8 @@ export default function OrderDetailPage() {
                 <p>ข้อมูลการผลิตจะแสดงที่นี่</p>
                 <p className="text-xs mt-1">(Mock mode - ยังไม่มีข้อมูล Production Jobs)</p>
               </div>
-            </Card>
-          )}
+          </Card>
+        )}
 
           {/* History Tab */}
           {activeTab === 'history' && (
@@ -653,18 +776,18 @@ export default function OrderDetailPage() {
                 <p className="text-xs mt-1">(Mock mode - ยังไม่มีข้อมูล History)</p>
               </div>
             </Card>
-          )}
-        </div>
-      </div>
+                )}
+              </div>
+                          </div>
 
       {/* Dev Mode Indicator */}
       <div className="fixed bottom-4 right-4">
         <div className="bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 shadow-lg">
           <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
           Mock Data Mode
-        </div>
-      </div>
-    </div>
+                        </div>
+                        </div>
+                      </div>
   );
 }
 
@@ -673,14 +796,14 @@ export default function OrderDetailPage() {
 // ---------------------------------------------
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
-  return (
+                  return (
     <div className="flex items-start gap-3">
       <div className="text-[#86868B] mt-0.5">{icon}</div>
       <div className="flex-1">
         <div className="text-xs text-[#86868B]">{label}</div>
         <div className="text-sm text-[#1D1D1F]">{value || '-'}</div>
-      </div>
-    </div>
+                          </div>
+                        </div>
   );
 }
 
@@ -719,8 +842,8 @@ function WorkItemCard({
             <div className="text-xs text-[#86868B]">
                               {item.position_name && `${item.position_name}`}
                               {item.print_size_name && ` • ${item.print_size_name}`}
-                            </div>
-                          </div>
+                      </div>
+                    </div>
                         </div>
         <div className="flex items-center gap-3">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
@@ -734,25 +857,25 @@ function WorkItemCard({
                       {isExpanded && (
                         <div className="px-4 pb-4 border-t border-[#E8E8ED]">
                           <div className="grid grid-cols-3 gap-4 py-3 text-sm">
-                            <div>
+                    <div>
                               <span className="text-[#86868B]">จำนวน:</span>
                               <span className="text-[#1D1D1F] ml-2">{item.quantity}</span>
-                            </div>
+                    </div>
                             <div>
                               <span className="text-[#86868B]">ราคา/หน่วย:</span>
                               <span className="text-[#1D1D1F] ml-2">{formatCurrency(item.unit_price)}</span>
-                            </div>
+                    </div>
                             <div>
                               <span className="text-[#86868B]">รวม:</span>
                               <span className="text-[#1D1D1F] ml-2">{formatCurrency(item.total_price)}</span>
-                            </div>
-                          </div>
+                  </div>
+                </div>
                           {item.description && (
                             <div className="py-2 text-sm">
                               <span className="text-[#86868B]">รายละเอียด:</span>
                               <span className="text-[#1D1D1F] ml-2">{item.description}</span>
-                            </div>
-                          )}
+              </div>
+            )}
                         </div>
                       )}
                     </div>
@@ -784,7 +907,7 @@ function PaymentCard({
           <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
             {status.label}
                             </span>
-                          </div>
+            </div>
         <span className="text-xs text-[#86868B]">{formatDateTime(payment.created_at)}</span>
                         </div>
       <div className="text-sm text-[#86868B]">
@@ -793,8 +916,8 @@ function PaymentCard({
          payment.payment_method === 'credit_card' ? 'บัตรเครดิต' :
          payment.payment_method}
         {payment.bank_name && ` • ${payment.bank_name}`}
+                        </div>
                       </div>
-                    </div>
                   );
 }
 
@@ -848,8 +971,8 @@ function DesignApprovalTab({
     return (
       <div className="flex items-center justify-center py-12">
         <div className="w-8 h-8 border-4 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+              </div>
+                  );
   }
 
   return (
@@ -867,19 +990,19 @@ function DesignApprovalTab({
               <div className="p-3 bg-[#F5F5F7] rounded-xl text-center">
                 <div className="text-2xl font-bold text-[#1D1D1F]">{summary.design.total_designs}</div>
                 <div className="text-xs text-[#86868B]">ไฟล์ออกแบบ</div>
-              </div>
+                    </div>
               <div className="p-3 bg-[#34C759]/10 rounded-xl text-center">
                 <div className="text-2xl font-bold text-[#34C759]">{summary.design.approved_designs}</div>
                 <div className="text-xs text-[#34C759]">อนุมัติแล้ว</div>
-              </div>
+                  </div>
               <div className="p-3 bg-[#FF9500]/10 rounded-xl text-center">
                 <div className="text-2xl font-bold text-[#FF9500]">{summary.design.pending_designs}</div>
                 <div className="text-xs text-[#FF9500]">รอตรวจสอบ</div>
-              </div>
+                  </div>
               <div className="p-3 bg-[#007AFF]/10 rounded-xl text-center">
                 <div className="text-2xl font-bold text-[#007AFF]">{summary.design.total_revisions}</div>
                 <div className="text-xs text-[#007AFF]">แก้ไขทั้งหมด</div>
-              </div>
+                </div>
             </div>
             
             {/* Revision Cost Warning */}
@@ -909,12 +1032,12 @@ function DesignApprovalTab({
             <div className="text-center py-12 text-[#86868B]">
               <Palette className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>ยังไม่มีไฟล์ออกแบบ</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
+              </div>
+            ) : (
+              <div className="space-y-3">
               {designs.map((design) => {
                 const versions = mockDesignVersions.filter(v => v.order_design_id === design.id);
-                return (
+                  return (
                   <DesignSummaryCard
                     key={design.id}
                     design={design}
@@ -926,9 +1049,9 @@ function DesignApprovalTab({
                   />
                 );
               })}
-            </div>
-          )}
-        </Card>
+              </div>
+            )}
+          </Card>
 
         {/* Mockup Section */}
         <Card className="p-6 bg-white apple-card">
@@ -941,8 +1064,8 @@ function DesignApprovalTab({
             <div className="text-center py-12 text-[#86868B]">
               <Image className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>ยังไม่มี Mockup</p>
-            </div>
-          ) : (
+                        </div>
+            ) : (
             <MockupApprovalCard
               mockup={latestMockup}
               onApprove={() => {
@@ -956,7 +1079,7 @@ function DesignApprovalTab({
             />
           )}
         </Card>
-      </div>
+                        </div>
 
       {/* Right Column - Approval Gates */}
       <div className="space-y-6">
@@ -975,12 +1098,12 @@ function DesignApprovalTab({
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 bg-[#34C759] rounded-xl flex items-center justify-center">
                 <CheckCircle2 className="w-6 h-6 text-white" />
-              </div>
+                      </div>
               <div>
                 <h3 className="font-bold text-[#34C759]">พร้อมผลิต!</h3>
                 <p className="text-sm text-[#34C759]/80">ผ่าน Gates ทั้งหมดแล้ว</p>
+                    </div>
               </div>
-            </div>
             <Button className="w-full gap-2 bg-[#34C759] hover:bg-[#2DB84D]">
               <Factory className="w-4 h-4" />
               ส่งเข้าผลิต
@@ -1014,15 +1137,15 @@ function DesignApprovalTab({
         size="lg"
       >
         {selectedDesign && (
-          <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4">
             {/* Design Info */}
             <div className="p-4 bg-[#F5F5F7] rounded-xl">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
+          <div>
                   <span className="text-[#86868B]">ตำแหน่ง:</span>
                   <span className="ml-2 text-[#1D1D1F]">{selectedDesign.position || '-'}</span>
-                </div>
-                <div>
+          </div>
+          <div>
                   <span className="text-[#86868B]">แก้ไข:</span>
                   <span className="ml-2 text-[#1D1D1F]">
                     {selectedDesign.revision_count} ครั้ง
@@ -1040,8 +1163,8 @@ function DesignApprovalTab({
                   <p className="text-sm text-[#1D1D1F] mt-1">{selectedDesign.brief_text}</p>
                 </div>
               )}
-            </div>
-
+          </div>
+          
             {/* Versions List */}
             <h4 className="font-semibold text-[#1D1D1F]">
               ประวัติเวอร์ชัน ({selectedDesignVersions.length})
@@ -1063,8 +1186,8 @@ function DesignApprovalTab({
                   }}
                 />
               ))}
-            </div>
           </div>
+        </div>
         )}
       </Modal>
     </div>

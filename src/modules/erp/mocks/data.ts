@@ -2802,3 +2802,250 @@ export function getQCRecordsForJob(jobId: string): QCRecord[] {
   return mockQCRecords.filter(r => r.job_id === jobId);
 }
 
+// =============================================
+// PHASE 6: FINANCIAL MOCK DATA
+// =============================================
+
+import type {
+  Quotation,
+  Invoice,
+  Receipt,
+  FinancialSummary,
+} from '../types/financial';
+
+export const mockQuotations: Quotation[] = [
+  {
+    id: 'quot-001',
+    quotation_number: 'QT-2024-0001',
+    order_id: 'order-001',
+    customer_id: 'cust-001',
+    customer_name: 'บริษัท ABC จำกัด',
+    customer_email: 'contact@abc.com',
+    customer_phone: '02-123-4567',
+    status: 'converted',
+    valid_from: '2024-11-25',
+    valid_until: '2024-12-05',
+    items: [
+      { id: 'qi-001', description: 'เสื้อโปโลขาว + DTF หน้าอก', quantity: 50, unit: 'ตัว', unit_price: 79, total_price: 3950 },
+    ],
+    subtotal: 3950,
+    discount_amount: 0,
+    tax_amount: 0,
+    shipping_cost: 0,
+    total_amount: 3950,
+    payment_terms: 'มัดจำ 50%',
+    sent_at: '2024-11-25T10:00:00Z',
+    viewed_at: '2024-11-25T11:00:00Z',
+    accepted_at: '2024-11-26T09:00:00Z',
+    converted_to_order_id: 'order-001',
+    converted_at: '2024-11-26T10:00:00Z',
+    created_by: 'user-001',
+    created_at: '2024-11-25T09:00:00Z',
+    updated_at: '2024-11-26T10:00:00Z',
+  },
+  {
+    id: 'quot-002',
+    quotation_number: 'QT-2024-0002',
+    customer_id: 'cust-003',
+    customer_name: 'บริษัท XYZ จำกัด',
+    customer_email: 'order@xyz.com',
+    status: 'sent',
+    valid_from: '2024-12-01',
+    valid_until: '2024-12-15',
+    items: [
+      { id: 'qi-002', description: 'เสื้อทีมฟุตบอล ซับลิเมชั่น', quantity: 30, unit: 'ตัว', unit_price: 350, total_price: 10500 },
+      { id: 'qi-003', description: 'กางเกงทีมฟุตบอล ซับลิเมชั่น', quantity: 30, unit: 'ตัว', unit_price: 280, total_price: 8400 },
+    ],
+    subtotal: 18900,
+    discount_percent: 5,
+    discount_amount: 945,
+    tax_amount: 0,
+    shipping_cost: 0,
+    total_amount: 17955,
+    payment_terms: 'ชำระเต็มจำนวน',
+    sent_at: '2024-12-01T14:00:00Z',
+    viewed_at: '2024-12-02T09:00:00Z',
+    created_by: 'user-001',
+    created_at: '2024-12-01T13:00:00Z',
+    updated_at: '2024-12-02T09:00:00Z',
+  },
+];
+
+export const mockInvoices: Invoice[] = [
+  {
+    id: 'inv-001',
+    invoice_number: 'INV-2024-0001',
+    order_id: 'order-001',
+    order_number: 'ORD-2024-0001',
+    customer_id: 'cust-001',
+    customer_name: 'บริษัท ABC จำกัด',
+    customer_email: 'contact@abc.com',
+    billing_address: '123 ถนนสุขุมวิท วัฒนา กรุงเทพฯ 10110',
+    tax_id: '0123456789012',
+    status: 'partial',
+    invoice_date: '2024-12-01',
+    due_date: '2024-12-15',
+    items: [
+      { id: 'ii-001', description: 'เสื้อโปโลขาว + DTF หน้าอก', quantity: 50, unit: 'ตัว', unit_price: 79, total_price: 3950 },
+    ],
+    subtotal: 3950,
+    discount_amount: 0,
+    tax_percent: 0,
+    tax_amount: 0,
+    total_amount: 3950,
+    paid_amount: 2000,
+    remaining_amount: 1950,
+    payment_terms: 'มัดจำ 50% ที่เหลือจ่ายก่อนส่งของ',
+    sent_at: '2024-12-01T12:00:00Z',
+    is_tax_invoice: false,
+    order: { order_number: 'ORD-2024-0001', customer_name: 'บริษัท ABC จำกัด' },
+    created_at: '2024-12-01T11:00:00Z',
+    updated_at: '2024-12-01T14:00:00Z',
+  },
+  {
+    id: 'inv-002',
+    invoice_number: 'INV-2024-0002',
+    order_id: 'order-002',
+    order_number: 'ORD-2024-0002',
+    customer_id: 'cust-002',
+    customer_name: 'คุณวิภา ใจดี',
+    customer_phone: '089-876-5432',
+    status: 'paid',
+    invoice_date: '2024-11-28',
+    due_date: '2024-12-05',
+    items: [
+      { id: 'ii-002', description: 'เสื้อยืดคอวีสีกรม + DTF หน้าอก', quantity: 100, unit: 'ตัว', unit_price: 95, total_price: 9500 },
+    ],
+    subtotal: 9500,
+    discount_amount: 0,
+    tax_amount: 0,
+    total_amount: 9500,
+    paid_amount: 9500,
+    remaining_amount: 0,
+    sent_at: '2024-11-28T10:00:00Z',
+    paid_at: '2024-11-29T09:00:00Z',
+    is_tax_invoice: false,
+    order: { order_number: 'ORD-2024-0002', customer_name: 'คุณวิภา ใจดี' },
+    created_at: '2024-11-28T09:00:00Z',
+    updated_at: '2024-11-29T09:00:00Z',
+  },
+  {
+    id: 'inv-003',
+    invoice_number: 'INV-2024-0003',
+    order_id: 'order-003',
+    order_number: 'ORD-2024-0003',
+    customer_id: 'cust-003',
+    customer_name: 'โรงเรียนสวนกุหลาบ',
+    billing_address: 'กรุงเทพมหานคร',
+    tax_id: '0994000123456',
+    status: 'paid',
+    invoice_date: '2024-12-02',
+    due_date: '2024-12-16',
+    items: [
+      { id: 'ii-003', description: 'เสื้อโปโลนักเรียน + สกรีนโลโก้', quantity: 200, unit: 'ตัว', unit_price: 120, total_price: 24000 },
+    ],
+    subtotal: 24000,
+    discount_amount: 0,
+    tax_percent: 7,
+    tax_amount: 1680,
+    total_amount: 25680,
+    paid_amount: 25680,
+    remaining_amount: 0,
+    sent_at: '2024-12-02T11:00:00Z',
+    paid_at: '2024-12-02T14:00:00Z',
+    is_tax_invoice: true,
+    tax_invoice_number: 'TAX-2024-0001',
+    order: { order_number: 'ORD-2024-0003', customer_name: 'โรงเรียนสวนกุหลาบ' },
+    created_at: '2024-12-02T10:00:00Z',
+    updated_at: '2024-12-02T14:00:00Z',
+  },
+];
+
+export const mockReceipts: Receipt[] = [
+  {
+    id: 'rcpt-001',
+    receipt_number: 'RCP-2024-0001',
+    invoice_id: 'inv-001',
+    order_id: 'order-001',
+    payment_id: 'pay-001',
+    customer_name: 'บริษัท ABC จำกัด',
+    amount: 2000,
+    payment_method: 'bank_transfer',
+    payment_date: '2024-12-01',
+    reference_number: 'TRF-001',
+    is_tax_receipt: false,
+    notes: 'มัดจำ 50%',
+    created_at: '2024-12-01T15:00:00Z',
+  },
+  {
+    id: 'rcpt-002',
+    receipt_number: 'RCP-2024-0002',
+    invoice_id: 'inv-002',
+    order_id: 'order-002',
+    payment_id: 'pay-002',
+    customer_name: 'คุณวิภา ใจดี',
+    amount: 9500,
+    payment_method: 'bank_transfer',
+    payment_date: '2024-11-29',
+    is_tax_receipt: false,
+    notes: 'ชำระเต็มจำนวน',
+    created_at: '2024-11-29T10:00:00Z',
+  },
+  {
+    id: 'rcpt-003',
+    receipt_number: 'RCP-2024-0003',
+    invoice_id: 'inv-003',
+    order_id: 'order-003',
+    payment_id: 'pay-003',
+    customer_name: 'โรงเรียนสวนกุหลาบ',
+    customer_address: 'กรุงเทพมหานคร',
+    tax_id: '0994000123456',
+    amount: 25680,
+    payment_method: 'bank_transfer',
+    payment_date: '2024-12-02',
+    is_tax_receipt: true,
+    notes: 'ใบกำกับภาษี',
+    created_at: '2024-12-02T15:00:00Z',
+  },
+];
+
+// Financial Summary Helper
+export function getFinancialSummary(): FinancialSummary {
+  const totalRevenue = mockInvoices.reduce((sum, inv) => sum + inv.total_amount, 0);
+  const paidRevenue = mockInvoices.reduce((sum, inv) => sum + inv.paid_amount, 0);
+  const pendingRevenue = mockInvoices.filter(inv => inv.status === 'sent' || inv.status === 'partial').reduce((sum, inv) => sum + inv.remaining_amount, 0);
+  const overdueRevenue = mockInvoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.remaining_amount, 0);
+  
+  return {
+    period: {
+      from: '2024-12-01',
+      to: '2024-12-31',
+    },
+    revenue: {
+      total: totalRevenue,
+      paid: paidRevenue,
+      pending: pendingRevenue,
+      overdue: overdueRevenue,
+    },
+    invoices: {
+      total: mockInvoices.length,
+      draft: mockInvoices.filter(i => i.status === 'draft').length,
+      sent: mockInvoices.filter(i => i.status === 'sent' || i.status === 'partial').length,
+      paid: mockInvoices.filter(i => i.status === 'paid').length,
+      overdue: mockInvoices.filter(i => i.status === 'overdue').length,
+    },
+    quotations: {
+      total: mockQuotations.length,
+      pending: mockQuotations.filter(q => q.status === 'sent' || q.status === 'viewed').length,
+      accepted: mockQuotations.filter(q => q.status === 'accepted' || q.status === 'converted').length,
+      conversion_rate: 50,
+    },
+    payments: {
+      total_received: paidRevenue,
+      by_method: [
+        { method: 'bank_transfer', amount: paidRevenue, count: mockReceipts.length },
+      ],
+    },
+  };
+}
+

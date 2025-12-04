@@ -10,4 +10,5 @@ export * from './useERPConfig';
 export * from './useERPDesign';
 export * from './useERPChangeRequest';
 export * from './useERPQC';
+export * from './useERPFinancial';
 
