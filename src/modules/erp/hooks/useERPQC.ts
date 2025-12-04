@@ -22,12 +22,12 @@ export const QC_RESULT_CONFIG = {
   partial: { label: 'Partial', label_th: 'ผ่านบางส่วน', color: 'bg-yellow-100 text-yellow-700', icon: '⚠' },
 };
 
-export const QC_STAGE_CONFIG = {
-  material_check: { label: 'Material Check', label_th: 'ตรวจวัสดุ', order: 1 },
-  pre_production: { label: 'Pre-Production', label_th: 'ก่อนผลิต', order: 2 },
-  in_process: { label: 'In Process', label_th: 'ระหว่างผลิต', order: 3 },
-  post_production: { label: 'Post-Production', label_th: 'หลังผลิต', order: 4 },
-  final_inspection: { label: 'Final Inspection', label_th: 'ตรวจสอบสุดท้าย', order: 5 },
+export const QC_STAGE_CONFIG: Record<string, { label: string; label_th: string; order: number; icon?: string }> = {
+  material_check: { label: 'Material Check', label_th: 'ตรวจวัสดุ', order: 1, icon: '📦' },
+  pre_production: { label: 'Pre-Production', label_th: 'ก่อนผลิต', order: 2, icon: '🔍' },
+  in_process: { label: 'In Process', label_th: 'ระหว่างผลิต', order: 3, icon: '⚙️' },
+  post_production: { label: 'Post-Production', label_th: 'หลังผลิต', order: 4, icon: '✅' },
+  final_inspection: { label: 'Final Inspection', label_th: 'ตรวจสอบสุดท้าย', order: 5, icon: '🎯' },
 };
 
 export const DEFECT_SEVERITY_CONFIG = {

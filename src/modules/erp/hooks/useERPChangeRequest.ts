@@ -37,10 +37,12 @@ export const CHANGE_TYPE_CONFIG = {
   other: { label: 'Other', label_th: 'อื่นๆ', icon: '📝' },
 };
 
-export const IMPACT_LEVEL_CONFIG = {
+export const IMPACT_LEVEL_CONFIG: Record<string, { label: string; label_th: string; color: string }> = {
+  none: { label: 'None', label_th: 'ไม่มี', color: 'bg-gray-100 text-gray-600' },
   low: { label: 'Low', label_th: 'น้อย', color: 'bg-green-100 text-green-600' },
   medium: { label: 'Medium', label_th: 'ปานกลาง', color: 'bg-yellow-100 text-yellow-600' },
   high: { label: 'High', label_th: 'มาก', color: 'bg-red-100 text-red-600' },
+  critical: { label: 'Critical', label_th: 'วิกฤต', color: 'bg-purple-100 text-purple-600' },
 };
 
 export function useERPChangeRequests(filters?: ChangeRequestFilters, pagination?: PaginationParams) {

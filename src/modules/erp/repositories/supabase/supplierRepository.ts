@@ -429,6 +429,10 @@ export class SupabaseSupplierRepository implements ISupplierRepository {
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true);
 
+    const { count: total_po } = await this.supabase
+      .from('purchase_orders')
+      .select('*', { count: 'exact', head: true });
+
     const { count: pending_pos } = await this.supabase
       .from('purchase_orders')
       .select('*', { count: 'exact', head: true })
@@ -449,12 +453,23 @@ export class SupabaseSupplierRepository implements ISupplierRepository {
 
     const total_outstanding = (poData || []).reduce((sum, po) => sum + (po.total_amount || 0), 0);
 
+    // Calculate total pending amount
+    const { data: pendingPOData } = await this.supabase
+      .from('purchase_orders')
+      .select('total_amount')
+      .in('status', ['draft', 'sent', 'confirmed']);
+
+    const total_amount_pending = (pendingPOData || []).reduce((sum, po) => sum + (po.total_amount || 0), 0);
+
     return {
       total_suppliers: total_suppliers || 0,
       active_suppliers: active_suppliers || 0,
+      total_po: total_po || 0,
+      pending_po: pending_pos || 0,
       pending_pos: pending_pos || 0,
       overdue_deliveries: overdue_deliveries || 0,
       total_outstanding,
+      total_amount_pending,
     };
   }
 }

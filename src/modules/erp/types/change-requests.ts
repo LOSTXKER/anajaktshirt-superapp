@@ -43,9 +43,11 @@ export interface ChangeRequest extends BaseEntity, AuditFields {
 
   // Impact Assessment
   impact: ChangeRequestImpact;
+  impact_level?: 'none' | 'low' | 'medium' | 'high' | 'critical'; // Alias for impact.level
 
   // Cost Breakdown
   fees: ChangeRequestFees;
+  actual_cost?: number; // Alias for fees.total_fee
 
   // Schedule Impact
   days_delayed: number;
@@ -310,6 +312,7 @@ export interface RespondChangeRequestInput {
 export interface ChangeRequestFilters extends BaseFilters {
   status?: ChangeRequestStatus | ChangeRequestStatus[];
   change_type?: ChangeRequestType;
+  type?: ChangeRequestType; // Alias for change_type
   change_category?: ChangeRequestCategory;
   order_id?: string;
   order_phase?: OrderPhase;
@@ -339,10 +342,20 @@ export interface ChangeRequestSummary {
 
 export interface ChangeRequestStats {
   total_requests: number;
+  total?: number; // Alias for total_requests
   pending_requests: number;
+  pending?: number; // Alias for pending_requests
+  quoted?: number;
+  approved?: number;
+  rejected?: number;
+  completed?: number;
+  cancelled?: number;
   awaiting_customer: number;
   total_fees_quoted: number;
   total_fees_collected: number;
+  total_cost?: number; // Alias for total_fees_collected
   avg_resolution_days: number;
+  by_type?: Record<string, number>;
+  by_impact?: Record<string, number>;
 }
 

@@ -7,7 +7,7 @@
 import type { Order, OrderWorkItem, OrderPayment, WorkType } from '../types/orders';
 import type { ProductionJob, ProductionStation } from '../types/production';
 import type { Supplier, PurchaseOrder } from '../types/suppliers';
-import type { ChangeRequest } from '../types/change-requests';
+import type { ChangeRequest, ChangeRequestLog, ChangeRequestStats } from '../types/change-requests';
 import type { AddonType } from '../types/addons';
 import type { Customer, Product, PrintPosition, PrintSize, OrderType, PriorityLevel } from '../types/config';
 
@@ -2193,11 +2193,7 @@ export function getMockupApprovalSummary(orderId: string): MockupApprovalSummary
 // PHASE 4: CHANGE REQUEST MOCK DATA
 // =============================================
 
-import type {
-  ChangeRequest,
-  ChangeRequestLog,
-  ChangeRequestStats,
-} from '../types/change-requests';
+// Note: ChangeRequest is already imported at the top
 
 export const mockChangeRequests: ChangeRequest[] = [
   {

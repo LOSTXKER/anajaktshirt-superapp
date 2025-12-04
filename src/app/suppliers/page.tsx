@@ -501,9 +501,9 @@ export default function SuppliersPage() {
               <div className="bg-[#F5F5F7] rounded-xl p-4">
                 <h4 className="text-sm font-medium text-[#86868B] mb-2">ที่อยู่</h4>
                 <p className="text-sm text-[#1D1D1F]">
-                  {selectedSupplier.address}
-                  {selectedSupplier.province && `, ${selectedSupplier.province}`}
-                  {selectedSupplier.postal_code && ` ${selectedSupplier.postal_code}`}
+                  {selectedSupplier.address?.address || '-'}
+                  {selectedSupplier.address?.province && `, ${selectedSupplier.address.province}`}
+                  {selectedSupplier.address?.postal_code && ` ${selectedSupplier.address.postal_code}`}
                 </p>
               </div>
             )}

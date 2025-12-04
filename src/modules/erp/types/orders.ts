@@ -50,7 +50,7 @@ export interface WorkType extends BaseEntity {
   name: string;
   name_th?: string;
   description?: string;
-  category: WorkCategory; // DB column name
+  category?: WorkCategory; // DB column name - optional for compatibility
   category_code?: WorkCategory; // Alias for compatibility
   base_price: number;
   requires_design: boolean;
@@ -322,6 +322,8 @@ export interface DesignVersion extends BaseEntity {
   // Customer Approval
   approved_by_customer: boolean;
   customer_approved_at?: string;
+  approved_by?: string; // Who approved this version
+  approved_at?: string; // When it was approved
   is_final: boolean;
 
   // Feedback
@@ -354,6 +356,7 @@ export interface OrderMockup extends BaseEntity {
   customer_feedback?: string;
   approved_at?: string;
   rejected_at?: string;
+  approved_by_customer?: boolean; // Whether customer approved
 
   created_by?: string;
 }
@@ -579,17 +582,28 @@ export interface OrderFilters extends BaseFilters {
 export interface OrderStats {
   // Counts
   total: number;
+  total_orders?: number; // Alias for total
   pending: number;
+  pending_orders?: number; // Alias for pending
   in_production: number;
   ready_to_ship: number;
   completed: number;
   completed_today: number;
   overdue: number;
+  overdue_orders?: number; // Alias for overdue
   
   // Revenue
   total_revenue: number;
   paid_revenue: number;
   outstanding_revenue: number;
+  avg_order_value?: number; // Average order value
+  
+  // Legacy aliases for compatibility
+  revenue?: {
+    total: number;
+    paid: number;
+    outstanding: number;
+  };
 }
 
 export interface OrderSummary {
@@ -610,7 +624,7 @@ export interface OrderSummary {
 // Approval Gate Types
 // ---------------------------------------------
 
-export type ApprovalGateType = 'design' | 'mockup' | 'material' | 'payment' | 'production_start';
+export type ApprovalGateType = 'design' | 'mockup' | 'material' | 'payment' | 'production_start' | 'design_approval' | 'mockup_approval';
 export type ApprovalGateStatus = 'pending' | 'in_progress' | 'approved' | 'rejected' | 'skipped';
 
 export interface ApprovalGate {

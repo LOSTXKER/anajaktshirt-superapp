@@ -52,6 +52,7 @@ export interface QCRecord extends BaseEntity {
 
   qc_stage_code: QCStage;
   qc_stage_name?: string;
+  stage?: QCStage; // Alias for qc_stage_code
 
   // Quantities
   total_qty: number;
@@ -62,7 +63,11 @@ export interface QCRecord extends BaseEntity {
 
   // Result
   overall_result: QCResult;
+  result?: QCResult; // Alias for overall_result
   pass_rate: number;
+
+  // Status
+  status?: 'pending' | 'in_progress' | 'completed' | 'pending_rework';
 
   // Checklist
   checklist_results: QCCheckpoint[];
@@ -77,6 +82,7 @@ export interface QCRecord extends BaseEntity {
 
   // Actions Taken
   actions_taken?: QCAction[];
+  actions?: QCAction[]; // Alias for actions_taken
 
   // Timing
   started_at?: string;
@@ -239,8 +245,10 @@ export interface QCActionInput {
 
 export interface QCRecordFilters extends BaseFilters {
   qc_stage_code?: QCStage;
+  stage?: QCStage; // Alias for qc_stage_code
   overall_result?: QCResult;
   job_id?: string;
+  production_job_id?: string; // Alias for job_id
   order_id?: string;
   checked_by?: string;
   has_failures?: boolean;

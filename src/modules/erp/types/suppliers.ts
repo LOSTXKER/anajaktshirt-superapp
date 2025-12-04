@@ -30,12 +30,24 @@ export interface Supplier extends BaseEntity {
   // Contact
   contact: ContactInfo;
   address?: Address;
+  
+  // Aliases for convenient access
+  contact_name?: string; // Alias for contact.name
+  contact_phone?: string; // Alias for contact.phone
+  contact_email?: string; // Alias for contact.email
+  phone?: string; // Alias for contact.phone
+  email?: string; // Alias for contact.email
+  line_id?: string; // Alias for contact.line_id
+  province?: string; // Alias for address.province
+  postal_code?: string; // Alias for address.postal_code
+  district?: string; // Alias for address.district
 
   // Business Info
   tax_id?: string;
 
   // Services
   service_types: string[];
+  categories?: string[]; // Supplier categories (e.g., fabric, printing, sewing)
 
   // Terms
   default_lead_days: number;
@@ -51,6 +63,7 @@ export interface Supplier extends BaseEntity {
 
   // Status
   status: SupplierStatus;
+  is_active?: boolean; // Derived from status === 'active'
 
   notes?: string;
 }
@@ -399,5 +412,6 @@ export interface SupplierStats {
   pending_pos: number;
   overdue_deliveries: number;
   total_outstanding: number;
+  total_amount_pending: number; // Total amount of pending POs
 }
 

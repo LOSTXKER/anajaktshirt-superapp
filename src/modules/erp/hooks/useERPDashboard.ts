@@ -70,9 +70,12 @@ const DEFAULT_STATS: DashboardStats = {
   suppliers: {
     total_suppliers: 0,
     active_suppliers: 0,
+    total_po: 0,
+    pending_po: 0,
     pending_pos: 0,
     overdue_deliveries: 0,
     total_outstanding: 0,
+    total_amount_pending: 0,
   },
   revenue: {
     today: 0,

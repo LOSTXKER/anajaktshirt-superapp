@@ -19,12 +19,20 @@ export interface BaseEntity {
 export interface PaginationParams {
   page: number;
   limit: number;
+  pageSize?: number; // Alias for limit
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
 }
 
+// Alias for backward compatibility
+export interface Pagination {
+  page: number;
+  pageSize: number;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
+  totalCount?: number; // Alias for pagination.total
   pagination: {
     page: number;
     limit: number;
@@ -120,6 +128,7 @@ export interface ImageInfo extends FileInfo {
 export interface UserRef {
   id: string;
   full_name: string;
+  name?: string; // Alias for full_name
   email?: string;
   avatar_url?: string;
 }
