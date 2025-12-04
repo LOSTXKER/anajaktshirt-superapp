@@ -792,33 +792,47 @@ class MockProductionRepository implements IProductionRepository {
 }
 
 // ---------------------------------------------
-// Mock Supplier Repository
+// Mock Supplier Repository (localStorage-backed)
 // ---------------------------------------------
 
 class MockSupplierRepository implements ISupplierRepository {
-  private suppliers: Supplier[] = [...mockSuppliers];
-  private purchaseOrders: PurchaseOrder[] = [...mockPurchaseOrders];
+  private _getSuppliers(): Supplier[] {
+    return getFromStorage<Supplier>(STORAGE_KEYS.SUPPLIERS, mockSuppliers);
+  }
+
+  private _saveSuppliers(suppliers: Supplier[]): void {
+    saveToStorage(STORAGE_KEYS.SUPPLIERS, suppliers);
+  }
+
+  private _getPurchaseOrders(): PurchaseOrder[] {
+    return getFromStorage<PurchaseOrder>(STORAGE_KEYS.PURCHASE_ORDERS, mockPurchaseOrders);
+  }
+
+  private _savePurchaseOrders(pos: PurchaseOrder[]): void {
+    saveToStorage(STORAGE_KEYS.PURCHASE_ORDERS, pos);
+  }
 
   async findById(id: string): Promise<Supplier | null> {
     await delay();
-    return this.suppliers.find(s => s.id === id) || null;
+    return this._getSuppliers().find(s => s.id === id) || null;
   }
 
   async findByCode(code: string): Promise<Supplier | null> {
     await delay();
-    return this.suppliers.find(s => s.code === code) || null;
+    return this._getSuppliers().find(s => s.code === code) || null;
   }
 
   async findMany(filters?: SupplierFilters, pagination?: PaginationParams): Promise<PaginatedResult<Supplier>> {
     await delay();
-    return paginate(this.suppliers, pagination);
+    return paginate(this._getSuppliers(), pagination);
   }
 
   async create(data: CreateSupplierInput): Promise<ActionResult<Supplier>> {
     await delay();
+    const suppliers = this._getSuppliers();
     const newSupplier: Supplier = {
       id: generateId(),
-      code: data.code || `SUP-${String(this.suppliers.length + 1).padStart(3, '0')}`,
+      code: data.code || `SUP-${String(suppliers.length + 1).padStart(3, '0')}`,
       name: data.name,
       name_th: data.name_th,
       contact: {
@@ -847,40 +861,46 @@ class MockSupplierRepository implements ISupplierRepository {
       created_at: new Date().toISOString(),
     };
 
-    this.suppliers.push(newSupplier);
+    suppliers.push(newSupplier);
+    this._saveSuppliers(suppliers);
+    console.log('🏢 Supplier created:', newSupplier.code);
     return { success: true, data: newSupplier };
   }
 
   async update(id: string, data: UpdateSupplierInput): Promise<ActionResult<Supplier>> {
     await delay();
-    const index = this.suppliers.findIndex(s => s.id === id);
+    const suppliers = this._getSuppliers();
+    const index = suppliers.findIndex(s => s.id === id);
     if (index === -1) {
       return { success: false, message: 'Supplier not found' };
     }
 
-    this.suppliers[index] = { ...this.suppliers[index], ...data };
-    return { success: true, data: this.suppliers[index] };
+    suppliers[index] = { ...suppliers[index], ...data };
+    this._saveSuppliers(suppliers);
+    return { success: true, data: suppliers[index] };
   }
 
   async delete(id: string): Promise<ActionResult> {
     await delay();
-    const index = this.suppliers.findIndex(s => s.id === id);
+    const suppliers = this._getSuppliers();
+    const index = suppliers.findIndex(s => s.id === id);
     if (index === -1) {
       return { success: false, message: 'Supplier not found' };
     }
 
-    this.suppliers.splice(index, 1);
+    suppliers.splice(index, 1);
+    this._saveSuppliers(suppliers);
     return { success: true };
   }
 
   async getByServiceType(serviceType: string): Promise<Supplier[]> {
     await delay();
-    return this.suppliers.filter(s => s.service_types.includes(serviceType));
+    return this._getSuppliers().filter(s => s.service_types.includes(serviceType));
   }
 
   async getPurchaseOrders(supplierId: string): Promise<PurchaseOrder[]> {
     await delay();
-    return this.purchaseOrders.filter(po => po.supplier_id === supplierId);
+    return this._getPurchaseOrders().filter(po => po.supplier_id === supplierId);
   }
 
   async createPurchaseOrder(data: CreatePurchaseOrderInput): Promise<ActionResult<PurchaseOrder>> {
@@ -910,12 +930,14 @@ class MockSupplierRepository implements ISupplierRepository {
 
   async getStats(): Promise<SupplierStats> {
     await delay();
+    const suppliers = this._getSuppliers();
+    const purchaseOrders = this._getPurchaseOrders();
     return {
-      total_suppliers: this.suppliers.length,
-      active_suppliers: this.suppliers.filter(s => s.status === 'active').length,
-      pending_pos: this.purchaseOrders.filter(po => po.status === 'sent').length,
+      total_suppliers: suppliers.length,
+      active_suppliers: suppliers.filter(s => s.status === 'active').length,
+      pending_pos: purchaseOrders.filter(po => po.status === 'sent').length,
       overdue_deliveries: 0,
-      total_outstanding: this.purchaseOrders
+      total_outstanding: purchaseOrders
         .filter(po => po.payment_status !== 'paid')
         .reduce((sum, po) => sum + po.total_amount - po.paid_amount, 0),
     };
@@ -923,25 +945,31 @@ class MockSupplierRepository implements ISupplierRepository {
 }
 
 // ---------------------------------------------
-// Mock Change Request Repository
+// Mock Change Request Repository (localStorage-backed)
 // ---------------------------------------------
 
 class MockChangeRequestRepository implements IChangeRequestRepository {
-  private changeRequests: ChangeRequest[] = [...mockChangeRequests];
+  private _getChangeRequests(): ChangeRequest[] {
+    return getFromStorage<ChangeRequest>(STORAGE_KEYS.CHANGE_REQUESTS, mockChangeRequests);
+  }
+
+  private _saveChangeRequests(requests: ChangeRequest[]): void {
+    saveToStorage(STORAGE_KEYS.CHANGE_REQUESTS, requests);
+  }
 
   async findById(id: string): Promise<ChangeRequest | null> {
     await delay();
-    return this.changeRequests.find(cr => cr.id === id) || null;
+    return this._getChangeRequests().find(cr => cr.id === id) || null;
   }
 
   async findByRequestNumber(requestNumber: string): Promise<ChangeRequest | null> {
     await delay();
-    return this.changeRequests.find(cr => cr.request_number === requestNumber) || null;
+    return this._getChangeRequests().find(cr => cr.request_number === requestNumber) || null;
   }
 
   async findMany(filters?: ChangeRequestFilters, pagination?: PaginationParams): Promise<PaginatedResult<ChangeRequest>> {
     await delay();
-    return paginate(this.changeRequests, pagination);
+    return paginate(this._getChangeRequests(), pagination);
   }
 
   async create(data: CreateChangeRequestInput): Promise<ActionResult<ChangeRequest>> {
@@ -961,11 +989,19 @@ class MockChangeRequestRepository implements IChangeRequestRepository {
 
   async getByOrderId(orderId: string): Promise<ChangeRequest[]> {
     await delay();
-    return this.changeRequests.filter(cr => cr.order_id === orderId);
+    return this._getChangeRequests().filter(cr => cr.order_id === orderId);
   }
 
   async quote(data: QuoteChangeRequestInput): Promise<ActionResult> {
     await delay();
+    const requests = this._getChangeRequests();
+    const request = requests.find(cr => cr.id === data.change_request_id);
+    if (request) {
+      request.fees = data.fees;
+      request.status = 'awaiting_customer';
+      this._saveChangeRequests(requests);
+      console.log('💬 Change request quoted');
+    }
     return { success: true };
   }
 
@@ -976,25 +1012,50 @@ class MockChangeRequestRepository implements IChangeRequestRepository {
 
   async respondToRequest(data: RespondChangeRequestInput): Promise<ActionResult> {
     await delay();
+    const requests = this._getChangeRequests();
+    const request = requests.find(cr => cr.id === data.change_request_id);
+    if (request) {
+      request.customer_response = data.response;
+      request.customer_response_at = new Date().toISOString();
+      if (data.response === 'accepted') {
+        request.status = 'approved';
+      } else {
+        request.status = 'rejected';
+      }
+      this._saveChangeRequests(requests);
+    }
     return { success: true };
   }
 
   async markCompleted(changeRequestId: string): Promise<ActionResult> {
     await delay();
+    const requests = this._getChangeRequests();
+    const request = requests.find(cr => cr.id === changeRequestId);
+    if (request) {
+      request.status = 'completed';
+      this._saveChangeRequests(requests);
+    }
     return { success: true };
   }
 
   async cancel(changeRequestId: string, reason: string): Promise<ActionResult> {
     await delay();
+    const requests = this._getChangeRequests();
+    const request = requests.find(cr => cr.id === changeRequestId);
+    if (request) {
+      request.status = 'cancelled';
+      this._saveChangeRequests(requests);
+    }
     return { success: true };
   }
 
   async getStats(filters?: ChangeRequestFilters): Promise<ChangeRequestStats> {
     await delay();
+    const requests = this._getChangeRequests();
     return {
-      total_requests: this.changeRequests.length,
-      pending_requests: this.changeRequests.filter(cr => cr.status === 'pending').length,
-      awaiting_customer: this.changeRequests.filter(cr => cr.status === 'awaiting_customer').length,
+      total_requests: requests.length,
+      pending_requests: requests.filter(cr => cr.status === 'pending').length,
+      awaiting_customer: requests.filter(cr => cr.status === 'awaiting_customer').length,
       total_fees_quoted: 0,
       total_fees_collected: 0,
       avg_resolution_days: 1,
