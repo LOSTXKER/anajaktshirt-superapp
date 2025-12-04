@@ -162,13 +162,10 @@ export class SupabaseOrderRepository implements IOrderRepository {
   ): Promise<PaginatedResult<Order>> {
     console.log('Fetching orders with filters:', filters);
     
-    // Query with customer join
+    // Query orders only (no join - will fetch customers separately if needed)
     let query = this.supabase
       .from('orders')
-      .select(`
-        *,
-        customer:customers(*)
-      `, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     // Apply filters
     if (filters?.status) {
@@ -223,9 +220,30 @@ export class SupabaseOrderRepository implements IOrderRepository {
     
     console.log('Orders fetched successfully:', data?.length || 0, 'records');
 
+    // Fetch customers separately for orders that have customer_id
+    const customerIds = [...new Set((data || []).map(o => o.customer_id).filter(Boolean))];
+    let customersMap: Record<string, any> = {};
+    
+    if (customerIds.length > 0) {
+      const { data: customers } = await this.supabase
+        .from('customers')
+        .select('*')
+        .in('id', customerIds);
+      
+      if (customers) {
+        customersMap = Object.fromEntries(customers.map(c => [c.id, c]));
+      }
+    }
+
+    // Map orders with customer data
+    const ordersWithCustomers = (data || []).map(order => ({
+      ...order,
+      customer: order.customer_id ? customersMap[order.customer_id] : null,
+    }));
+
     const totalCount = count || 0;
     return {
-      data: (data || []).map(dbToOrder),
+      data: ordersWithCustomers.map(dbToOrder),
       pagination: {
         page,
         pageSize,
