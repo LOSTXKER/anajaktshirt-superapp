@@ -111,28 +111,38 @@ export function useOrderMutations() {
 
       // Create work items if provided
       if (input.work_items && input.work_items.length > 0) {
+        console.log('Creating work items:', input.work_items.length);
+        
         const workItemsToInsert = input.work_items.map(item => ({
           order_id: order.id,
-          work_type_code: item.work_type_code,
-          work_type_name: item.work_type_name,
-          position_code: item.position_code,
-          position_name: item.position_name,
-          print_size_code: item.print_size_code,
-          print_size_name: item.print_size_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_price: (item.quantity || 0) * (item.unit_price || 0),
-          description: item.description,
+          work_type_code: item.work_type_code || null,
+          work_type_name: item.work_type_name || item.description || 'รายการงาน',
+          position_code: item.position_code || null,
+          position_name: item.position_name || null,
+          print_size_code: item.print_size_code || null,
+          print_size_name: item.print_size_name || null,
+          quantity: item.quantity || 1,
+          unit_price: item.unit_price || 0,
+          total_price: (item.quantity || 1) * (item.unit_price || 0),
+          description: item.description || null,
           status: 'pending',
         }));
 
-        const { error: workItemsError } = await supabase
+        console.log('Work items to insert:', workItemsToInsert);
+
+        const { data: createdItems, error: workItemsError } = await supabase
           .from('order_work_items')
-          .insert(workItemsToInsert);
+          .insert(workItemsToInsert)
+          .select();
 
         if (workItemsError) {
-          console.warn('Failed to create work items:', workItemsError);
+          console.error('Failed to create work items:', workItemsError);
+          // Don't throw - order was created, just work items failed
+        } else {
+          console.log('Work items created successfully:', createdItems?.length);
         }
+      } else {
+        console.log('No work items to create');
       }
 
       // Audit log

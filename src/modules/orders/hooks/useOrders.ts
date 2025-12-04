@@ -132,43 +132,61 @@ export function useOrder(orderId: string | null) {
         return;
       }
 
-      // Fetch related data - errors are non-fatal
+      // Fetch related data - log errors for debugging
       let workItems: any[] = [];
       let payments: any[] = [];
       let designs: any[] = [];
       let mockups: any[] = [];
 
-      try {
-        const { data } = await supabase
-          .from('order_work_items')
-          .select('*')
-          .eq('order_id', orderId);
-        workItems = data || [];
-      } catch (e) { /* ignore */ }
+      // Fetch work items
+      const { data: workItemsData, error: workItemsError } = await supabase
+        .from('order_work_items')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('created_at', { ascending: true });
+      
+      if (workItemsError) {
+        console.warn('Work items fetch error:', workItemsError.message);
+      } else {
+        workItems = workItemsData || [];
+        console.log('Fetched work items:', workItems.length);
+      }
 
-      try {
-        const { data } = await supabase
-          .from('order_payments')
-          .select('*')
-          .eq('order_id', orderId);
-        payments = data || [];
-      } catch (e) { /* ignore */ }
+      // Fetch payments
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('order_payments')
+        .select('*')
+        .eq('order_id', orderId);
+      
+      if (paymentsError) {
+        console.warn('Payments fetch error:', paymentsError.message);
+      } else {
+        payments = paymentsData || [];
+      }
 
-      try {
-        const { data } = await supabase
-          .from('order_designs')
-          .select('*')
-          .eq('order_id', orderId);
-        designs = data || [];
-      } catch (e) { /* ignore */ }
+      // Fetch designs
+      const { data: designsData, error: designsError } = await supabase
+        .from('order_designs')
+        .select('*')
+        .eq('order_id', orderId);
+      
+      if (designsError) {
+        console.warn('Designs fetch error:', designsError.message);
+      } else {
+        designs = designsData || [];
+      }
 
-      try {
-        const { data } = await supabase
-          .from('order_mockups')
-          .select('*')
-          .eq('order_id', orderId);
-        mockups = data || [];
-      } catch (e) { /* ignore */ }
+      // Fetch mockups
+      const { data: mockupsData, error: mockupsError } = await supabase
+        .from('order_mockups')
+        .select('*')
+        .eq('order_id', orderId);
+      
+      if (mockupsError) {
+        console.warn('Mockups fetch error:', mockupsError.message);
+      } else {
+        mockups = mockupsData || [];
+      }
 
       // Combine all data
       const fullOrder = {
