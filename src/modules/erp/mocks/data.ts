@@ -2608,7 +2608,7 @@ export const mockQCRecords: QCRecord[] = [
     follow_up_required: true,
     follow_up_notes: 'ตรวจสอบหลังซักใหม่',
     
-    checker: { id: 'user-003', name: 'พนักงาน QC' },
+    checker: { id: 'user-003', full_name: 'พนักงาน QC' },
     job: { job_number: 'JOB-2024-0001', work_type_code: 'dtf' },
     order: { order_number: 'ORD-2024-0001', customer_name: 'บริษัท ABC จำกัด' },
     
@@ -2655,7 +2655,7 @@ export const mockQCRecords: QCRecord[] = [
     
     follow_up_required: false,
     
-    checker: { id: 'user-003', name: 'พนักงาน QC' },
+    checker: { id: 'user-003', full_name: 'พนักงาน QC' },
     job: { job_number: 'JOB-2024-0003', work_type_code: 'dtf' },
     order: { order_number: 'ORD-2024-0002', customer_name: 'คุณวิภา ใจดี' },
     
@@ -2711,7 +2711,7 @@ export const mockQCRecords: QCRecord[] = [
     follow_up_required: true,
     follow_up_notes: 'รอ supplier ส่งทดแทน 5 ตัว',
     
-    checker: { id: 'user-003', name: 'พนักงาน QC' },
+    checker: { id: 'user-003', full_name: 'พนักงาน QC' },
     order: { order_number: 'ORD-2024-0003', customer_name: 'โรงเรียนสวนกุหลาบ' },
     
     created_at: '2024-12-03T08:45:00Z',

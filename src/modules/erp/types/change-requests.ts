@@ -98,6 +98,9 @@ export interface ChangeRequest extends BaseEntity, AuditFields {
 // ---------------------------------------------
 
 export interface ChangeRequestImpact {
+  // Impact Level Summary
+  level?: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  
   // Production Impact
   production_already_started: boolean;
   produced_qty: number;

@@ -95,6 +95,7 @@ export interface QCRecord extends BaseEntity {
   follow_up_required: boolean;
   follow_up_notes?: string;
   follow_up_completed_at?: string;
+  follow_up_completed?: boolean; // Alias for checking if follow_up_completed_at exists
 
   // Relations
   checker?: UserRef;
