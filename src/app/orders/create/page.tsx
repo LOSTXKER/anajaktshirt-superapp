@@ -436,6 +436,25 @@ export default function CreateOrderPage() {
     });
   };
 
+  // Calculate pricing
+  const calculateSubtotal = () => {
+    const workItemsTotal = formData.work_items.reduce((sum, item) => {
+      return sum + (item.quantity * item.unit_price);
+    }, 0);
+    
+    const addonsTotal = formData.addons.reduce((sum, addon) => {
+      return sum + (addon.quantity * addon.unit_price);
+    }, 0);
+    
+    return workItemsTotal + addonsTotal;
+  };
+
+  const calculateGrandTotal = () => {
+    const subtotal = calculateSubtotal();
+    const discount = formData.discount_amount || 0;
+    return subtotal - discount;
+  };
+
   const handleSubmit = async () => {
     try {
       // Calculate pricing

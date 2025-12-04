@@ -220,16 +220,32 @@ export function useERPWorkTypes() {
 // ---------------------------------------------
 
 export function useERPAddonTypes() {
-  const [addonTypes, setAddonTypes] = useState<AddonType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // TODO: Implement in configRepository
-    // For now, return empty
-    setAddonTypes([]);
-    setLoading(false);
-  }, []);
+  // Standard addon types (can be moved to DB in future)
+  const addonTypes: AddonType[] = [
+    // Labeling
+    { code: 'tag_woven', name_th: 'ป้ายผ้า (Woven)', category: 'labeling', base_price: 15, unit: 'ชิ้น', sort_order: 1 },
+    { code: 'tag_printed', name_th: 'ป้ายพิมพ์ (Printed)', category: 'labeling', base_price: 8, unit: 'ชิ้น', sort_order: 2 },
+    { code: 'hang_tag', name_th: 'แท็กแขวน', category: 'labeling', base_price: 5, unit: 'ชิ้น', sort_order: 3 },
+    { code: 'size_sticker', name_th: 'สติ๊กเกอร์ไซส์', category: 'labeling', base_price: 2, unit: 'ชิ้น', sort_order: 4 },
+    
+    // Packaging
+    { code: 'poly_bag', name_th: 'ถุง OPP', category: 'packaging', base_price: 3, unit: 'ชิ้น', sort_order: 5 },
+    { code: 'zip_bag', name_th: 'ถุงซิป', category: 'packaging', base_price: 5, unit: 'ชิ้น', sort_order: 6 },
+    { code: 'box_individual', name_th: 'กล่องใส่เดี่ยว', category: 'packaging', base_price: 12, unit: 'ชิ้น', sort_order: 7 },
+    { code: 'gift_box', name_th: 'กล่องของขวัญ', category: 'packaging', base_price: 25, unit: 'ชิ้น', sort_order: 8 },
+    
+    // Finishing
+    { code: 'folding', name_th: 'พับเสื้อ', category: 'finishing', base_price: 5, unit: 'ชิ้น', sort_order: 9 },
+    { code: 'ironing', name_th: 'รีดผ้า', category: 'finishing', base_price: 8, unit: 'ชิ้น', sort_order: 10 },
+    { code: 'quality_check', name_th: 'ตรวจสอบคุณภาพ', category: 'finishing', base_price: 10, unit: 'ชิ้น', sort_order: 11 },
+    
+    // Extra Services
+    { code: 'express_ship', name_th: 'จัดส่งด่วน', category: 'extra', base_price: 50, unit: 'ครั้ง', sort_order: 12 },
+    { code: 'rush_production', name_th: 'เร่งผลิต', category: 'extra', base_price: 200, unit: 'ครั้ง', sort_order: 13 },
+  ];
 
   const getAddonTypeByCode = useCallback(
     (code: string): AddonType | undefined => {
@@ -264,18 +280,32 @@ export function useERPAddonTypes() {
 // ---------------------------------------------
 
 export function useERPPrintConfig() {
-  const [positions, setPositions] = useState<PrintPosition[]>([]);
-  const [sizes, setSizes] = useState<PrintSize[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // TODO: Implement in configRepository
-    // For now, return empty
-    setPositions([]);
-    setSizes([]);
-    setLoading(false);
-  }, []);
+  // Standard print positions (configurable in future)
+  const positions: PrintPosition[] = [
+    { code: 'front_center', name: 'หน้าอก (ตรงกลาง)', name_th: 'หน้าอก (ตรงกลาง)', sort_order: 1 },
+    { code: 'front_left', name: 'หน้าอก (ซ้าย)', name_th: 'หน้าอก (ซ้าย)', sort_order: 2 },
+    { code: 'front_right', name: 'หน้าอก (ขวา)', name_th: 'หน้าอก (ขวา)', sort_order: 3 },
+    { code: 'back_center', name: 'หลัง (ตรงกลาง)', name_th: 'หลัง (ตรงกลาง)', sort_order: 4 },
+    { code: 'back_full', name: 'หลัง (เต็มตัว)', name_th: 'หลัง (เต็มตัว)', sort_order: 5 },
+    { code: 'sleeve_left', name: 'แขนซ้าย', name_th: 'แขนซ้าย', sort_order: 6 },
+    { code: 'sleeve_right', name: 'แขนขวา', name_th: 'แขนขวา', sort_order: 7 },
+    { code: 'collar', name: 'คอเสื้อ', name_th: 'คอเสื้อ', sort_order: 8 },
+  ];
+
+  // Standard sizes (configurable in future)
+  const sizes: PrintSize[] = [
+    { code: 'xs', name: 'XS', name_th: 'XS', sort_order: 1 },
+    { code: 's', name: 'S', name_th: 'S', sort_order: 2 },
+    { code: 'm', name: 'M', name_th: 'M', sort_order: 3 },
+    { code: 'l', name: 'L', name_th: 'L', sort_order: 4 },
+    { code: 'xl', name: 'XL', name_th: 'XL', sort_order: 5 },
+    { code: 'xxl', name: '2XL', name_th: '2XL', sort_order: 6 },
+    { code: '3xl', name: '3XL', name_th: '3XL', sort_order: 7 },
+    { code: '4xl', name: '4XL', name_th: '4XL', sort_order: 8 },
+  ];
 
   return {
     positions,
