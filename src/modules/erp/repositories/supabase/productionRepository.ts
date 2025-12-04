@@ -1,4 +1,3 @@
-// @ts-nocheck - TODO: Fix type mismatches with Supabase schema
 'use client';
 
 import { getSupabaseClient } from '@/lib/supabase';
@@ -87,31 +86,75 @@ export class SupabaseProductionRepository implements IProductionRepository {
   async findById(id: string): Promise<ProductionJob | null> {
     const { data, error } = await this.supabase
       .from('production_jobs')
-      .select(`
-        *,
-        order:orders(*, customer:customers(*)),
-        station:production_stations(*)
-      `)
+      .select('*')
       .eq('id', id)
       .single();
 
     if (error || !data) return null;
-    return dbToProductionJob(data);
+
+    // Fetch related data separately
+    const enrichedData = await this.enrichProductionJob(data);
+    return dbToProductionJob(enrichedData);
   }
 
   async findByJobNumber(jobNumber: string): Promise<ProductionJob | null> {
     const { data, error } = await this.supabase
       .from('production_jobs')
-      .select(`
-        *,
-        order:orders(*, customer:customers(*)),
-        station:production_stations(*)
-      `)
+      .select('*')
       .eq('job_number', jobNumber)
       .single();
 
     if (error || !data) return null;
-    return dbToProductionJob(data);
+
+    // Fetch related data separately
+    const enrichedData = await this.enrichProductionJob(data);
+    return dbToProductionJob(enrichedData);
+  }
+
+  // Helper to fetch related data
+  private async enrichProductionJob(job: any): Promise<any> {
+    const enriched = { ...job };
+
+    // Fetch order if exists
+    if (job.order_id) {
+      const { data: order } = await this.supabase
+        .from('orders')
+        .select('id, order_number, customer_id')
+        .eq('id', job.order_id)
+        .single();
+
+      if (order) {
+        enriched.order = order;
+
+        // Fetch customer if exists
+        if (order.customer_id) {
+          const { data: customer } = await this.supabase
+            .from('customers')
+            .select('id, name')
+            .eq('id', order.customer_id)
+            .single();
+
+          if (customer) {
+            enriched.order.customer = customer;
+          }
+        }
+      }
+    }
+
+    // Fetch station if exists
+    if (job.station_id) {
+      const { data: station } = await this.supabase
+        .from('production_stations')
+        .select('*')
+        .eq('id', job.station_id)
+        .single();
+
+      if (station) {
+        enriched.station = station;
+      }
+    }
+
+    return enriched;
   }
 
   async findMany(
@@ -120,11 +163,7 @@ export class SupabaseProductionRepository implements IProductionRepository {
   ): Promise<PaginatedResult<ProductionJob>> {
     let query = this.supabase
       .from('production_jobs')
-      .select(`
-        *,
-        order:orders(*, customer:customers(*)),
-        station:production_stations(*)
-      `, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     // Apply filters
     if (filters?.order_id) {
@@ -170,9 +209,12 @@ export class SupabaseProductionRepository implements IProductionRepository {
       };
     }
 
+    // Fetch related data for all jobs
+    const enrichedJobs = await this.enrichProductionJobs(data || []);
+
     const totalCount = count || 0;
     return {
-      data: (data || []).map(dbToProductionJob),
+      data: enrichedJobs.map(dbToProductionJob),
       pagination: {
         page,
         pageSize,
@@ -180,6 +222,72 @@ export class SupabaseProductionRepository implements IProductionRepository {
         totalPages: Math.ceil(totalCount / pageSize),
       },
     };
+  }
+
+  // Batch enrich for multiple jobs
+  private async enrichProductionJobs(jobs: any[]): Promise<any[]> {
+    if (jobs.length === 0) return [];
+
+    // Fetch all unique order IDs
+    const orderIds = [...new Set(jobs.map(j => j.order_id).filter(Boolean))];
+    const stationIds = [...new Set(jobs.map(j => j.station_id).filter(Boolean))];
+
+    // Batch fetch orders
+    let ordersMap: Record<string, any> = {};
+    if (orderIds.length > 0) {
+      const { data: orders } = await this.supabase
+        .from('orders')
+        .select('id, order_number, customer_id')
+        .in('id', orderIds);
+
+      if (orders) {
+        // Fetch customers for these orders
+        const customerIds = [...new Set(orders.map(o => o.customer_id).filter(Boolean))];
+        let customersMap: Record<string, any> = {};
+
+        if (customerIds.length > 0) {
+          const { data: customers } = await this.supabase
+            .from('customers')
+            .select('id, name')
+            .in('id', customerIds);
+
+          if (customers) {
+            customersMap = Object.fromEntries(customers.map(c => [c.id, c]));
+          }
+        }
+
+        // Map orders with customers
+        ordersMap = Object.fromEntries(
+          orders.map(o => [
+            o.id,
+            {
+              ...o,
+              customer: o.customer_id ? customersMap[o.customer_id] : null,
+            },
+          ])
+        );
+      }
+    }
+
+    // Batch fetch stations
+    let stationsMap: Record<string, any> = {};
+    if (stationIds.length > 0) {
+      const { data: stations } = await this.supabase
+        .from('production_stations')
+        .select('*')
+        .in('id', stationIds);
+
+      if (stations) {
+        stationsMap = Object.fromEntries(stations.map(s => [s.id, s]));
+      }
+    }
+
+    // Enrich jobs with fetched data
+    return jobs.map(job => ({
+      ...job,
+      order: job.order_id ? ordersMap[job.order_id] : null,
+      station: job.station_id ? stationsMap[job.station_id] : null,
+    }));
   }
 
   async create(input: CreateProductionJobInput): Promise<ActionResult<ProductionJob>> {
@@ -434,10 +542,7 @@ export class SupabaseProductionRepository implements IProductionRepository {
   async getQueue(stationId?: string): Promise<ProductionJobSummary[]> {
     let query = this.supabase
       .from('production_jobs')
-      .select(`
-        id, job_number, work_type_code, status, priority, total_qty, completed_qty, due_date,
-        order:orders(order_number, customer:customers(name))
-      `)
+      .select('id, job_number, work_type_code, status, priority, total_qty, completed_qty, due_date, order_id')
       .in('status', ['pending', 'queued', 'assigned'])
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true });
@@ -453,22 +558,79 @@ export class SupabaseProductionRepository implements IProductionRepository {
       return [];
     }
 
+    if (!data || data.length === 0) return [];
+
+    // Fetch order and customer data separately
+    const orderIds = [...new Set(data.map((j: any) => j.order_id).filter(Boolean))];
+    let ordersMap: Record<string, any> = {};
+
+    if (orderIds.length > 0) {
+      const { data: orders } = await this.supabase
+        .from('orders')
+        .select('id, order_number, customer_id')
+        .in('id', orderIds);
+
+      if (orders) {
+        const customerIds = [...new Set(orders.map(o => o.customer_id).filter(Boolean))];
+        let customersMap: Record<string, any> = {};
+
+        if (customerIds.length > 0) {
+          const { data: customers } = await this.supabase
+            .from('customers')
+            .select('id, name')
+            .in('id', customerIds);
+
+          if (customers) {
+            customersMap = Object.fromEntries(customers.map(c => [c.id, c]));
+          }
+        }
+
+        ordersMap = Object.fromEntries(
+          orders.map(o => [
+            o.id,
+            {
+              ...o,
+              customer: o.customer_id ? customersMap[o.customer_id] : null,
+            },
+          ])
+        );
+      }
+    }
+
+    // Fetch work type names
+    const workTypeCodes = [...new Set(data.map((j: any) => j.work_type_code).filter(Boolean))];
+    let workTypesMap: Record<string, string> = {};
+
+    if (workTypeCodes.length > 0) {
+      const { data: workTypes } = await this.supabase
+        .from('work_types')
+        .select('code, name')
+        .in('code', workTypeCodes);
+
+      if (workTypes) {
+        workTypesMap = Object.fromEntries(workTypes.map(wt => [wt.code, wt.name]));
+      }
+    }
+
     const now = new Date();
-    return (data || []).map((job: any) => ({
-      id: job.id,
-      job_number: job.job_number,
-      order_number: job.order?.order_number,
-      customer_name: job.order?.customer?.name,
-      work_type_code: job.work_type_code,
-      work_type_name: job.work_type_code, // TODO: lookup work type name
-      status: job.status,
-      priority: job.priority,
-      ordered_qty: job.total_qty,
-      produced_qty: job.completed_qty,
-      progress_percent: job.total_qty > 0 ? Math.round((job.completed_qty / job.total_qty) * 100) : 0,
-      due_date: job.due_date,
-      is_overdue: job.due_date ? new Date(job.due_date) < now : false,
-    }));
+    return data.map((job: any) => {
+      const order = job.order_id ? ordersMap[job.order_id] : null;
+      return {
+        id: job.id,
+        job_number: job.job_number,
+        order_number: order?.order_number || '',
+        customer_name: order?.customer?.name || '',
+        work_type_code: job.work_type_code,
+        work_type_name: workTypesMap[job.work_type_code] || job.work_type_code,
+        status: job.status,
+        priority: job.priority,
+        ordered_qty: job.total_qty,
+        produced_qty: job.completed_qty,
+        progress_percent: job.total_qty > 0 ? Math.round((job.completed_qty / job.total_qty) * 100) : 0,
+        due_date: job.due_date,
+        is_overdue: job.due_date ? new Date(job.due_date) < now : false,
+      };
+    });
   }
 
   async reorderQueue(jobIds: string[]): Promise<ActionResult> {
@@ -541,8 +703,10 @@ export class SupabaseProductionRepository implements IProductionRepository {
       completed_today: completed_today || 0,
       total_qty_pending,
       total_qty_completed_today,
-      on_time_rate: 100, // TODO: Calculate real on-time rate
-      rework_rate: 0, // TODO: Calculate real rework rate
+      // NOTE: These require historical data analysis across multiple tables
+      // Implement when we have enough production history
+      on_time_rate: 100, // Percentage of jobs completed before due_date
+      rework_rate: 0, // Percentage of jobs that required rework (from QC data)
     };
   }
 }
