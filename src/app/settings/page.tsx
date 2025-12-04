@@ -117,6 +117,7 @@ export default function SettingsPage() {
   };
 
   const getTotalSize = () => {
+    if (typeof window === 'undefined') return '0 Bytes';
     let total = 0;
     Object.values(STORAGE_KEYS).forEach(key => {
       const item = localStorage.getItem(key);
@@ -245,20 +246,21 @@ export default function SettingsPage() {
                   <p className="text-sm text-[#86868B]">Restore จากไฟล์ Backup</p>
                 </div>
               </div>
-              <label className="w-full">
+              <div className="w-full">
                 <input
+                  id="import-file"
                   type="file"
                   accept=".json"
                   onChange={handleImport}
                   className="hidden"
                 />
-                <Button className="w-full" variant="outline" asChild>
-                  <span>
+                <label htmlFor="import-file">
+                  <Button className="w-full" variant="outline" onClick={() => document.getElementById('import-file')?.click()}>
                     <Upload className="w-4 h-4 mr-2" />
                     Import Data
-                  </span>
-                </Button>
-              </label>
+                  </Button>
+                </label>
+              </div>
             </div>
 
             {/* Reset to Mock */}
