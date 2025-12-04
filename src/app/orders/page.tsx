@@ -13,7 +13,7 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react';
-import { Button, Card, Input } from '@/modules/shared/ui';
+import { Button, Card, Input, Dropdown } from '@/modules/shared/ui';
 import { 
   useERPOrders, 
   useERPOrderStats,
@@ -145,29 +145,23 @@ export default function OrdersPageNew() {
 
             {/* Quick Filters */}
             <div className="flex flex-wrap gap-2">
-              <select
+              <Dropdown
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as OrderStatus | '')}
-                className="px-4 py-2 bg-[#F5F5F7] border-0 rounded-xl text-sm text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 transition-all"
-              >
-                {statusOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setStatusFilter(value as OrderStatus | '')}
+                options={statusOptions.map(opt => ({ value: opt.value, label: opt.label }))}
+                placeholder="สถานะทั้งหมด"
+                size="sm"
+                className="w-48"
+              />
 
-              <select
+              <Dropdown
                 value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value as PriorityCode | '')}
-                className="px-4 py-2 bg-[#F5F5F7] border-0 rounded-xl text-sm text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 transition-all"
-              >
-                {priorityOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setPriorityFilter(value as PriorityCode | '')}
+                options={priorityOptions.map(opt => ({ value: opt.value, label: opt.label }))}
+                placeholder="ทุกความเร่งด่วน"
+                size="sm"
+                className="w-48"
+              />
 
               <Button
                 variant="secondary"
@@ -202,17 +196,13 @@ export default function OrdersPageNew() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-[#E8E8ED]">
               <div>
                 <label className="block text-xs font-medium text-[#86868B] mb-1.5">ช่องทางขาย</label>
-                <select
+                <Dropdown
                   value={channelFilter}
-                  onChange={(e) => setChannelFilter(e.target.value as SalesChannel | '')}
-                  className="w-full px-3 py-2 bg-[#F5F5F7] border-0 rounded-xl text-sm text-[#1D1D1F] focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
-                >
-                  {channelOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setChannelFilter(value as SalesChannel | '')}
+                  options={channelOptions.map(opt => ({ value: opt.value, label: opt.label }))}
+                  placeholder="ทุกช่องทาง"
+                  size="sm"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-[#86868B] mb-1.5">วันที่สั่ง (จาก)</label>
