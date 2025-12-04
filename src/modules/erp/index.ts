@@ -17,6 +17,9 @@ export * from './hooks';
 // Components
 export * from './components';
 
+// Storage (localStorage)
+export * from './storage';
+
 // Mock Repository (for development)
 export { createMockRepository } from './mocks';
 

@@ -6,4 +6,5 @@ export * from './orders';
 export * from './design';
 export * from './change-request';
 export * from './qc';
+export * from './ERPProvider';
 
