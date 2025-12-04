@@ -498,8 +498,9 @@ export default function CreateOrderPage() {
 
         // Create work items
         if (formData.work_items.length > 0) {
-          const workItemPromises = formData.work_items.map((item, index) => 
-            supabaseOrderRepository.createWorkItem({
+          for (let index = 0; index < formData.work_items.length; index++) {
+            const item = formData.work_items[index];
+            const workItemResult = await supabaseOrderRepository.addWorkItem({
               order_id: orderId,
               work_type_code: item.work_type_code,
               position_code: item.position_code || undefined,
@@ -508,14 +509,15 @@ export default function CreateOrderPage() {
               quantity: item.quantity,
               unit_price: item.unit_price,
               total_price: item.quantity * item.unit_price,
-              status: 'pending',
-              production_mode: 'in_house', // Default
+              production_mode: 'in_house',
               sequence_order: index,
               notes: item.notes,
-            })
-          );
-
-          await Promise.all(workItemPromises);
+            });
+            
+            if (!workItemResult.success) {
+              console.error('Failed to create work item:', workItemResult.message);
+            }
+          }
           console.log(`Created ${formData.work_items.length} work items`);
         }
 
