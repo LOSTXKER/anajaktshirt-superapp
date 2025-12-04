@@ -492,6 +492,24 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 -- ==================== INDEXES ====================
 
+DROP INDEX IF EXISTS idx_orders_customer_id;
+DROP INDEX IF EXISTS idx_orders_status;
+DROP INDEX IF EXISTS idx_orders_order_date;
+DROP INDEX IF EXISTS idx_orders_due_date;
+DROP INDEX IF EXISTS idx_work_items_order_id;
+DROP INDEX IF EXISTS idx_work_items_status;
+DROP INDEX IF EXISTS idx_payments_order_id;
+DROP INDEX IF EXISTS idx_production_jobs_order_id;
+DROP INDEX IF EXISTS idx_production_jobs_status;
+DROP INDEX IF EXISTS idx_production_jobs_station_id;
+DROP INDEX IF EXISTS idx_purchase_orders_supplier_id;
+DROP INDEX IF EXISTS idx_purchase_orders_order_id;
+DROP INDEX IF EXISTS idx_qc_records_order_id;
+DROP INDEX IF EXISTS idx_qc_records_production_job_id;
+DROP INDEX IF EXISTS idx_notifications_user_id;
+DROP INDEX IF EXISTS idx_notifications_is_read;
+DROP INDEX IF EXISTS idx_notifications_created_at;
+
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_order_date ON orders(order_date);
