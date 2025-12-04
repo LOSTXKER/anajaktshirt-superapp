@@ -417,6 +417,20 @@ CREATE TABLE profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Notifications
+CREATE TABLE notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  message TEXT,
+  data JSONB,
+  is_read BOOLEAN DEFAULT FALSE,
+  read_at TIMESTAMPTZ,
+  link VARCHAR(500),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==================== INDEXES ====================
 
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);
@@ -439,6 +453,10 @@ CREATE INDEX idx_purchase_orders_order_id ON purchase_orders(order_id);
 CREATE INDEX idx_qc_records_order_id ON qc_records(order_id);
 CREATE INDEX idx_qc_records_production_job_id ON qc_records(production_job_id);
 
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_is_read ON notifications(is_read);
+CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+
 -- ==================== ROW LEVEL SECURITY ====================
 
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
@@ -449,6 +467,7 @@ ALTER TABLE production_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE purchase_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Basic RLS Policies (Allow all for authenticated users)
 -- In production, you should create more specific policies
@@ -462,6 +481,8 @@ CREATE POLICY "Allow all for authenticated users" ON suppliers FOR ALL USING (au
 CREATE POLICY "Allow all for authenticated users" ON purchase_orders FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
 
 -- ==================== TRIGGERS ====================
 

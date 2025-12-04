@@ -553,6 +553,26 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
       };
+
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          type: string;
+          title: string;
+          message: string | null;
+          data: Json | null;
+          is_read: boolean;
+          read_at: string | null;
+          link: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['notifications']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['notifications']['Insert']>;
+      };
     };
     Views: {};
     Functions: {};
