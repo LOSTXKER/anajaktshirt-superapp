@@ -25,8 +25,16 @@ export function useOrderMutations() {
   // =============================================
 
   const createOrder = async (
-    input: CreateOrderInput
-  ): Promise<{ success: boolean; order?: Order; error?: string }> => {
+    input: CreateOrderInput & { 
+      work_items?: any[]; 
+      subtotal?: number; 
+      total_amount?: number;
+      metadata?: any;
+      notes?: string;
+      requires_tax_invoice?: boolean;
+      shipping_subdistrict?: string;
+    }
+  ): Promise<Order | null> => {
     setLoading(true);
     setError(null);
 
@@ -34,24 +42,41 @@ export function useOrderMutations() {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Generate order number
-      const { data: orderNumber } = await supabase.rpc('generate_order_number');
+      const { data: orderNumber, error: orderNumError } = await supabase.rpc('generate_order_number');
+      if (orderNumError) {
+        console.warn('Failed to generate order number, using fallback');
+      }
       
       // Generate access token
-      const { data: accessToken } = await supabase.rpc('generate_access_token');
+      const { data: accessToken, error: tokenError } = await supabase.rpc('generate_access_token');
+      if (tokenError) {
+        console.warn('Failed to generate access token, using fallback');
+      }
+
+      // Fallback order number if RPC fails
+      const finalOrderNumber = orderNumber || `ORD-${Date.now()}`;
+      const finalAccessToken = accessToken || crypto.randomUUID();
+
+      // Calculate totals
+      const subtotal = input.subtotal || 0;
+      const discountAmount = input.discount_amount || 0;
+      const shippingCost = input.shipping_cost || 0;
+      const totalAmount = input.total_amount || (subtotal - discountAmount + shippingCost);
 
       const { data: order, error: createError } = await supabase
         .from('orders')
         .insert({
-          order_number: orderNumber,
-          access_token: accessToken,
+          order_number: finalOrderNumber,
+          access_token: finalAccessToken,
           customer_id: input.customer_id || null,
           customer_name: input.customer_name,
           customer_phone: input.customer_phone || null,
           customer_email: input.customer_email || null,
           customer_line_id: input.customer_line_id || null,
-          shipping_name: input.shipping_name || null,
-          shipping_phone: input.shipping_phone || null,
+          shipping_name: input.shipping_name || input.customer_name || null,
+          shipping_phone: input.shipping_phone || input.customer_phone || null,
           shipping_address: input.shipping_address || null,
+          shipping_subdistrict: input.shipping_subdistrict || null,
           shipping_district: input.shipping_district || null,
           shipping_province: input.shipping_province || null,
           shipping_postal_code: input.shipping_postal_code || null,
@@ -59,39 +84,75 @@ export function useOrderMutations() {
           billing_tax_id: input.billing_tax_id || null,
           billing_address: input.billing_address || null,
           billing_phone: input.billing_phone || null,
-          needs_tax_invoice: input.needs_tax_invoice || false,
+          needs_tax_invoice: input.needs_tax_invoice || input.requires_tax_invoice || false,
           due_date: input.due_date || null,
           customer_note: input.customer_note || null,
-          internal_note: input.internal_note || null,
+          internal_note: input.internal_note || input.notes || null,
           sales_channel: input.sales_channel || null,
-          discount_amount: input.discount_amount || 0,
+          subtotal: subtotal,
+          discount_amount: discountAmount,
           discount_percent: input.discount_percent || 0,
           discount_reason: input.discount_reason || null,
-          shipping_cost: input.shipping_cost || 0,
+          shipping_cost: shippingCost,
+          total_amount: totalAmount,
           payment_terms: input.payment_terms || 'full',
           status: 'draft',
           created_by: user?.id,
           sales_person_id: user?.id,
+          metadata: input.metadata ? JSON.stringify(input.metadata) : null,
         })
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Order create error:', createError);
+        throw createError;
+      }
+
+      // Create work items if provided
+      if (input.work_items && input.work_items.length > 0) {
+        const workItemsToInsert = input.work_items.map(item => ({
+          order_id: order.id,
+          work_type_code: item.work_type_code,
+          work_type_name: item.work_type_name,
+          position_code: item.position_code,
+          position_name: item.position_name,
+          print_size_code: item.print_size_code,
+          print_size_name: item.print_size_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total_price: (item.quantity || 0) * (item.unit_price || 0),
+          description: item.description,
+          status: 'pending',
+        }));
+
+        const { error: workItemsError } = await supabase
+          .from('order_work_items')
+          .insert(workItemsToInsert);
+
+        if (workItemsError) {
+          console.warn('Failed to create work items:', workItemsError);
+        }
+      }
 
       // Audit log
-      await auditService.log({
-        userId: user?.id,
-        action: 'create',
-        entityType: 'order',
-        entityId: order.id,
-        newData: order,
-      });
+      try {
+        await auditService.log({
+          userId: user?.id,
+          action: 'create',
+          entityType: 'order',
+          entityId: order.id,
+          newData: order,
+        });
+      } catch (auditErr) {
+        console.warn('Audit log failed:', auditErr);
+      }
 
-      return { success: true, order: order as Order };
+      return order as Order;
     } catch (err: any) {
       console.error('Error creating order:', err);
       setError(err.message);
-      return { success: false, error: err.message };
+      return null;
     } finally {
       setLoading(false);
     }
