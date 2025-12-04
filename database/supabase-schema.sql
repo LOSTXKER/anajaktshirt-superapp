@@ -16,6 +16,12 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
+  CREATE TYPE payment_terms AS ENUM ('full', '50_50', '30_70', 'credit_7', 'credit_15', 'credit_30');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
   CREATE TYPE order_status AS ENUM (
     'draft', 'quoted', 'awaiting_payment', 'designing', 
     'awaiting_mockup_approval', 'mockup_approved', 'awaiting_material',
