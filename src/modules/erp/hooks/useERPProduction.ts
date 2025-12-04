@@ -4,37 +4,17 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  getProductionJobs,
-  getProductionJob,
-  getStations,
-  getProductionQueue,
-  getProductionStats,
-  startJob,
-  logProduction,
-  completeJob,
-} from '../services/productionService';
-import { initializeERP, isERPInitialized } from '../index';
+  mockProductionJobs,
+  mockProductionStations,
+} from '../mocks/data';
 import type {
   ProductionJob,
   ProductionStation,
-  ProductionJobFilters,
   ProductionStats,
-  ProductionJobSummary,
-  LogProductionInput,
+  ProductionJobFilters,
 } from '../types/production';
-import type { PaginationParams, PaginatedResult } from '../types/common';
-
-// ---------------------------------------------
-// Initialize ERP on first use
-// ---------------------------------------------
-
-function ensureERPInitialized() {
-  if (!isERPInitialized()) {
-    initializeERP('mock');
-  }
-}
 
 // ---------------------------------------------
 // useERPProductionJobs - Production jobs list
@@ -42,7 +22,6 @@ function ensureERPInitialized() {
 
 interface UseERPProductionJobsOptions {
   filters?: ProductionJobFilters;
-  pagination?: PaginationParams;
   autoFetch?: boolean;
 }
 
@@ -50,33 +29,71 @@ interface UseERPProductionJobsReturn {
   jobs: ProductionJob[];
   loading: boolean;
   error: string | null;
-  pagination: PaginatedResult<ProductionJob>['pagination'] | null;
+  totalCount: number;
   refetch: () => Promise<void>;
 }
 
 export function useERPProductionJobs(options: UseERPProductionJobsOptions = {}): UseERPProductionJobsReturn {
-  const { filters, pagination: paginationParams, autoFetch = true } = options;
+  const { filters, autoFetch = true } = options;
   
   const [jobs, setJobs] = useState<ProductionJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [paginationState, setPaginationState] = useState<PaginatedResult<ProductionJob>['pagination'] | null>(null);
 
   const fetchJobs = useCallback(async () => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
     
     try {
-      const result = await getProductionJobs(filters, paginationParams);
-      setJobs(result.data);
-      setPaginationState(result.pagination);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      let filtered = [...mockProductionJobs];
+      
+      // Apply filters
+      if (filters?.status) {
+        const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+        filtered = filtered.filter(j => statuses.includes(j.status));
+      }
+      
+      if (filters?.work_type_code) {
+        filtered = filtered.filter(j => j.work_type_code === filters.work_type_code);
+      }
+      
+      if (filters?.priority !== undefined) {
+        filtered = filtered.filter(j => j.priority === filters.priority);
+      }
+      
+      if (filters?.station_id) {
+        filtered = filtered.filter(j => j.station_id === filters.station_id);
+      }
+      
+      if (filters?.search) {
+        const search = filters.search.toLowerCase();
+        filtered = filtered.filter(j =>
+          j.job_number.toLowerCase().includes(search) ||
+          j.customer_name?.toLowerCase().includes(search) ||
+          j.order_number?.toLowerCase().includes(search) ||
+          j.description?.toLowerCase().includes(search)
+        );
+      }
+      
+      // Sort by priority (descending) then due_date
+      filtered.sort((a, b) => {
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        if (a.due_date && b.due_date) {
+          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        }
+        return 0;
+      });
+      
+      setJobs(filtered);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch jobs');
+      setError(err instanceof Error ? err.message : 'Failed to fetch production jobs');
     } finally {
       setLoading(false);
     }
-  }, [filters, paginationParams]);
+  }, [filters]);
 
   useEffect(() => {
     if (autoFetch) {
@@ -88,7 +105,7 @@ export function useERPProductionJobs(options: UseERPProductionJobsOptions = {}):
     jobs,
     loading,
     error,
-    pagination: paginationState,
+    totalCount: jobs.length,
     refetch: fetchJobs,
   };
 }
@@ -116,13 +133,13 @@ export function useERPProductionJob(jobId: string | null): UseERPProductionJobRe
       return;
     }
 
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
     try {
-      const result = await getProductionJob(jobId);
-      setJob(result);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const found = mockProductionJobs.find(j => j.id === jobId);
+      setJob(found || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch job');
     } finally {
@@ -143,29 +160,28 @@ export function useERPProductionJob(jobId: string | null): UseERPProductionJobRe
 }
 
 // ---------------------------------------------
-// useERPStations - Production stations
+// useERPProductionStations - Stations list
 // ---------------------------------------------
 
-interface UseERPStationsReturn {
+interface UseERPProductionStationsReturn {
   stations: ProductionStation[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
-export function useERPStations(): UseERPStationsReturn {
+export function useERPProductionStations(): UseERPProductionStationsReturn {
   const [stations, setStations] = useState<ProductionStation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStations = useCallback(async () => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
     try {
-      const result = await getStations();
-      setStations(result);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      setStations(mockProductionStations);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch stations');
     } finally {
@@ -186,50 +202,7 @@ export function useERPStations(): UseERPStationsReturn {
 }
 
 // ---------------------------------------------
-// useERPProductionQueue - Production queue
-// ---------------------------------------------
-
-interface UseERPProductionQueueReturn {
-  queue: ProductionJobSummary[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useERPProductionQueue(stationId?: string): UseERPProductionQueueReturn {
-  const [queue, setQueue] = useState<ProductionJobSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchQueue = useCallback(async () => {
-    ensureERPInitialized();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await getProductionQueue(stationId);
-      setQueue(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch queue');
-    } finally {
-      setLoading(false);
-    }
-  }, [stationId]);
-
-  useEffect(() => {
-    fetchQueue();
-  }, [fetchQueue]);
-
-  return {
-    queue,
-    loading,
-    error,
-    refetch: fetchQueue,
-  };
-}
-
-// ---------------------------------------------
-// useERPProductionStats - Production statistics
+// useERPProductionStats - Stats
 // ---------------------------------------------
 
 interface UseERPProductionStatsReturn {
@@ -239,25 +212,47 @@ interface UseERPProductionStatsReturn {
   refetch: () => Promise<void>;
 }
 
-export function useERPProductionStats(filters?: ProductionJobFilters): UseERPProductionStatsReturn {
+export function useERPProductionStats(): UseERPProductionStatsReturn {
   const [stats, setStats] = useState<ProductionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
     try {
-      const result = await getProductionStats(filters);
-      setStats(result);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const jobs = mockProductionJobs;
+      const today = new Date().toDateString();
+      
+      const calculatedStats: ProductionStats = {
+        total_jobs: jobs.length,
+        pending_jobs: jobs.filter(j => ['pending', 'queued'].includes(j.status)).length,
+        in_progress_jobs: jobs.filter(j => j.status === 'in_progress').length,
+        completed_today: jobs.filter(j => 
+          j.status === 'completed' && 
+          j.completed_at && 
+          new Date(j.completed_at).toDateString() === today
+        ).length,
+        total_qty_pending: jobs
+          .filter(j => !['completed', 'cancelled'].includes(j.status))
+          .reduce((sum, j) => sum + (j.ordered_qty - j.produced_qty), 0),
+        total_qty_completed_today: jobs
+          .filter(j => j.completed_at && new Date(j.completed_at).toDateString() === today)
+          .reduce((sum, j) => sum + j.passed_qty, 0),
+        on_time_rate: 92,
+        rework_rate: 3,
+      };
+      
+      setStats(calculatedStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch stats');
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, []);
 
   useEffect(() => {
     fetchStats();
@@ -272,13 +267,12 @@ export function useERPProductionStats(filters?: ProductionJobFilters): UseERPPro
 }
 
 // ---------------------------------------------
-// useERPProductionMutations - Job mutations
+// useERPProductionMutations - Mutations
 // ---------------------------------------------
 
 interface UseERPProductionMutationsReturn {
-  startJob: (jobId: string) => Promise<boolean>;
-  logProduction: (data: LogProductionInput) => Promise<boolean>;
-  completeJob: (jobId: string) => Promise<boolean>;
+  updateJobStatus: (jobId: string, status: string, notes?: string) => Promise<{ success: boolean; error?: string }>;
+  assignJob: (jobId: string, stationId: string) => Promise<{ success: boolean; error?: string }>;
   loading: boolean;
   error: string | null;
 }
@@ -287,69 +281,45 @@ export function useERPProductionMutations(): UseERPProductionMutationsReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleStartJob = useCallback(async (jobId: string): Promise<boolean> => {
-    ensureERPInitialized();
+  const updateJobStatus = useCallback(async (jobId: string, status: string, notes?: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await startJob(jobId);
-      if (!result.success) {
-        setError(result.message || 'Failed to start job');
-      }
-      return result.success;
+      await new Promise(resolve => setTimeout(resolve, 300));
+      // In mock mode, just return success
+      console.log('Mock: Update job status', { jobId, status, notes });
+      return { success: true };
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start job');
-      return false;
+      const errorMsg = err instanceof Error ? err.message : 'Failed to update status';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const handleLogProduction = useCallback(async (data: LogProductionInput): Promise<boolean> => {
-    ensureERPInitialized();
+  const assignJob = useCallback(async (jobId: string, stationId: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await logProduction(data);
-      if (!result.success) {
-        setError(result.message || 'Failed to log production');
-      }
-      return result.success;
+      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('Mock: Assign job', { jobId, stationId });
+      return { success: true };
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to log production');
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const handleCompleteJob = useCallback(async (jobId: string): Promise<boolean> => {
-    ensureERPInitialized();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await completeJob(jobId);
-      if (!result.success) {
-        setError(result.message || 'Failed to complete job');
-      }
-      return result.success;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to complete job');
-      return false;
+      const errorMsg = err instanceof Error ? err.message : 'Failed to assign job';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
   }, []);
 
   return {
-    startJob: handleStartJob,
-    logProduction: handleLogProduction,
-    completeJob: handleCompleteJob,
+    updateJobStatus,
+    assignJob,
     loading,
     error,
   };
 }
-
