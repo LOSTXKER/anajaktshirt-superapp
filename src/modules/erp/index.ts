@@ -43,6 +43,7 @@ export { createMockRepository } from './mocks';
 
 import { setRepository, type IRepositoryFactory } from './services/repository';
 import { createMockRepository } from './mocks';
+import { createSupabaseRepository } from './repositories/supabase';
 
 export type DatabaseProvider = 'mock' | 'supabase' | 'mysql';
 
@@ -64,10 +65,8 @@ export function initializeERP(provider: DatabaseProvider = 'mock'): void {
       break;
 
     case 'supabase':
-      // TODO: Implement SupabaseRepository
-      // repository = createSupabaseRepository();
-      console.warn('⚠️ Supabase repository not implemented yet, falling back to mock');
-      repository = createMockRepository();
+      repository = createSupabaseRepository();
+      console.log('🗄️ ERP initialized with SUPABASE (production mode)');
       break;
 
     case 'mysql':
