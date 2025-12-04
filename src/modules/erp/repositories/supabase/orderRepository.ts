@@ -543,9 +543,10 @@ export class SupabaseOrderRepository implements IOrderRepository {
   // ==================== DESIGNS ====================
 
   async getDesigns(orderId: string): Promise<OrderDesign[]> {
-    const { data, error } = await this.supabase
+    // Fetch designs first
+    const { data: designs, error } = await this.supabase
       .from('order_designs')
-      .select(`*, versions:design_versions(*)`)
+      .select('*')
       .eq('order_id', orderId);
 
     if (error) {
@@ -553,16 +554,33 @@ export class SupabaseOrderRepository implements IOrderRepository {
       return [];
     }
 
-    return (data || []).map((d: any) => ({
+    if (!designs || designs.length === 0) return [];
+
+    // Fetch versions separately
+    const designIds = designs.map(d => d.id);
+    const { data: versions } = await this.supabase
+      .from('design_versions')
+      .select('*')
+      .in('design_id', designIds);
+
+    // Map versions to designs
+    const versionsMap = (versions || []).reduce((acc: Record<string, any[]>, v) => {
+      if (!acc[v.design_id]) acc[v.design_id] = [];
+      acc[v.design_id].push(v);
+      return acc;
+    }, {});
+
+    return designs.map((d: any) => ({
       id: d.id,
       order_id: d.order_id,
       work_item_id: d.work_item_id,
       design_name: d.design_name,
       current_version_id: d.current_version_id,
       status: d.status,
-      versions: d.versions?.map((v: any) => ({
+      versions: (versionsMap[d.id] || []).map((v: any) => ({
         id: v.id,
         design_id: v.design_id,
+        order_design_id: v.design_id, // alias for compatibility
         version_number: v.version_number,
         file_url: v.file_url,
         file_name: v.file_name,
@@ -575,7 +593,7 @@ export class SupabaseOrderRepository implements IOrderRepository {
         approved_by: v.approved_by,
         created_by: v.created_by,
         created_at: v.created_at,
-      })) || [],
+      })),
       created_at: d.created_at,
       updated_at: d.updated_at,
     }));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Package,
@@ -26,14 +26,7 @@ import {
   Copy,
 } from 'lucide-react';
 import { Button, Card, Modal, useToast } from '@/modules/shared/ui';
-import {
-  mockOrders,
-  mockDesigns,
-  mockDesignVersions,
-  mockMockups,
-  mockApprovalGates,
-  getOrderGatesSummary,
-} from '@/modules/erp/mocks/data';
+import { supabaseOrderRepository } from '@/modules/erp';
 import type { Order, OrderDesign, DesignVersion, OrderMockup, ApprovalGate } from '@/modules/erp';
 
 // Status flow
@@ -67,20 +60,33 @@ export default function CustomerOrderPage() {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalType, setApprovalType] = useState<'design' | 'mockup'>('design');
 
-  useEffect(() => {
-    // Simulate API call to find order by token
-    const timer = setTimeout(() => {
-      const foundOrder = mockOrders.find(o => o.access_token === token);
+  const fetchOrderByToken = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Find order by access token
+      const foundOrder = await supabaseOrderRepository.findByAccessToken(token);
       if (foundOrder) {
         setOrder(foundOrder);
-        setDesigns(mockDesigns.filter(d => d.order_id === foundOrder.id));
-        setMockups(mockMockups.filter(m => m.order_id === foundOrder.id));
-        setGates(mockApprovalGates.filter(g => g.order_id === foundOrder.id));
+        // Fetch related data
+        const [designsData, mockupsData] = await Promise.all([
+          supabaseOrderRepository.getDesigns(foundOrder.id),
+          supabaseOrderRepository.getMockups(foundOrder.id),
+        ]);
+        setDesigns(designsData);
+        setMockups(mockupsData);
+        // Gates would need to be fetched from a separate table or calculated
+        setGates([]);
       }
+    } catch (err) {
+      console.error('Error fetching order:', err);
+    } finally {
       setLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
+    }
   }, [token]);
+
+  useEffect(() => {
+    fetchOrderByToken();
+  }, [fetchOrderByToken]);
 
   const formatDate = (date: string | undefined) => {
     if (!date) return '-';

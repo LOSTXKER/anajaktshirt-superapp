@@ -922,10 +922,8 @@ import type {
   OrderMockup, 
   OrderGatesSummary,
   DesignApprovalSummary,
+  DesignVersion,
 } from '@/modules/erp';
-import { 
-  mockDesignVersions,
-} from '@/modules/erp/mocks/data';
 
 function DesignApprovalTab({
   orderId,
@@ -949,10 +947,9 @@ function DesignApprovalTab({
   const [showVersionModal, setShowVersionModal] = useState(false);
 
   const selectedDesign = designs.find(d => d.id === selectedDesignId);
-  const selectedDesignVersions = selectedDesign
-    ? mockDesignVersions
-        .filter(v => v.order_design_id === selectedDesign.id)
-        .sort((a, b) => b.version_number - a.version_number)
+  // Get versions from design object (populated by repository)
+  const selectedDesignVersions: DesignVersion[] = selectedDesign?.versions
+    ? [...selectedDesign.versions].sort((a, b) => b.version_number - a.version_number)
     : [];
 
   const latestMockup = mockups.length > 0
@@ -1028,7 +1025,8 @@ function DesignApprovalTab({
             ) : (
               <div className="space-y-3">
               {designs.map((design) => {
-                const versions = mockDesignVersions.filter(v => v.order_design_id === design.id);
+                // Get versions from design object (populated by repository)
+                const versions = design.versions || [];
                   return (
                   <DesignSummaryCard
                     key={design.id}
