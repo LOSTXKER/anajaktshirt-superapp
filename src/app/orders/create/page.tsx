@@ -29,7 +29,7 @@ import {
   ChevronRight,
   Lock,
 } from 'lucide-react';
-import { Button, Card, Input, Modal, useToast } from '@/modules/shared/ui';
+import { Button, Card, Input, Modal, useToast, Dropdown } from '@/modules/shared/ui';
 import {
   useERPCustomers,
   useERPProducts,
@@ -687,15 +687,15 @@ export default function CreateOrderPage() {
                 )}
 
                 <h3 className="text-sm font-semibold text-[#1D1D1F] mt-6 mb-2">ช่องทางขาย</h3>
-                <select
+                <Dropdown
                   value={formData.sales_channel}
-                  onChange={(e) => setFormData(prev => ({ ...prev, sales_channel: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-[#F5F5F7] border-0 rounded-xl text-sm"
-                >
-                  {salesChannels.map((ch) => (
-                    <option key={ch.code} value={ch.code}>{ch.name_th}</option>
-                  ))}
-                </select>
+                  onChange={(value) => setFormData(prev => ({ ...prev, sales_channel: value }))}
+                  options={salesChannels.map(ch => ({
+                    value: ch.code,
+                    label: ch.name_th
+                  }))}
+                  placeholder="เลือกช่องทางขาย"
+                />
               </Card>
           </div>
           </div>
@@ -1273,32 +1273,38 @@ function WorkItemCard({
         {requiresDesign && (
           <div>
             <label className="block text-xs font-medium text-[#86868B] mb-1">ตำแหน่ง</label>
-            <select
-              value={item.position_code}
-              onChange={(e) => onUpdate('position_code', e.target.value)}
-              className="w-full px-3 py-2 bg-white border-0 rounded-xl text-sm"
-            >
-              <option value="">-- เลือกตำแหน่ง --</option>
-              {positions.map(pos => (
-                <option key={pos.code} value={pos.code}>{pos.name_th}</option>
-              ))}
-            </select>
+            <Dropdown
+              value={item.position_code || ''}
+              onChange={(value) => onUpdate('position_code', value)}
+              options={[
+                { value: '', label: '-- เลือกตำแหน่ง --' },
+                ...positions.map(pos => ({
+                  value: pos.code,
+                  label: pos.name_th || pos.name
+                }))
+              ]}
+              placeholder="เลือกตำแหน่ง"
+              size="sm"
+            />
           </div>
         )}
         {/* Size (only for design work) */}
         {requiresDesign && (
           <div>
             <label className="block text-xs font-medium text-[#86868B] mb-1">ขนาด</label>
-            <select
-              value={item.print_size_code}
-              onChange={(e) => onUpdate('print_size_code', e.target.value)}
-              className="w-full px-3 py-2 bg-white border-0 rounded-xl text-sm"
-            >
-              <option value="">-- เลือกขนาด --</option>
-              {sizes.map(size => (
-                <option key={size.code} value={size.code}>{size.name_th}</option>
-              ))}
-            </select>
+            <Dropdown
+              value={item.print_size_code || ''}
+              onChange={(value) => onUpdate('print_size_code', value)}
+              options={[
+                { value: '', label: '-- เลือกขนาด --' },
+                ...sizes.map(size => ({
+                  value: size.code,
+                  label: size.name_th || size.name
+                }))
+              ]}
+              placeholder="เลือกขนาด"
+              size="sm"
+            />
           </div>
         )}
         <div>
@@ -1453,16 +1459,20 @@ function ProductSelectionModal({
               className="pl-10 bg-[#F5F5F7] border-0"
             />
           </div>
-          <select
+          <Dropdown
             value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="px-4 py-2 bg-[#F5F5F7] border-0 rounded-xl text-sm"
-          >
-            <option value="">ทุกรุ่น</option>
-            {filterOptions.models.map(model => (
-              <option key={model} value={model}>{model}</option>
-            ))}
-          </select>
+            onChange={(value) => setSelectedModel(value)}
+            options={[
+              { value: '', label: 'ทุกรุ่น' },
+              ...filterOptions.models.map(model => ({
+                value: model,
+                label: model
+              }))
+            ]}
+            placeholder="ทุกรุ่น"
+            size="sm"
+            className="w-48"
+          />
           </div>
 
         <div className="max-h-96 overflow-y-auto">
