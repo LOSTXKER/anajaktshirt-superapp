@@ -265,6 +265,7 @@ export function getChangeTypeLabel(type: ChangeRequestType): { label: string; la
     design_revision: { label: 'Design Revision', label_th: 'แก้ไขลาย' },
     quantity_increase: { label: 'Increase Quantity', label_th: 'เพิ่มจำนวน' },
     quantity_decrease: { label: 'Decrease Quantity', label_th: 'ลดจำนวน' },
+    quantity_change: { label: 'Change Quantity', label_th: 'เปลี่ยนจำนวน' },
     size_change: { label: 'Size Change', label_th: 'เปลี่ยนไซส์' },
     color_change: { label: 'Color Change', label_th: 'เปลี่ยนสี' },
     add_work: { label: 'Add Work', label_th: 'เพิ่มงาน' },

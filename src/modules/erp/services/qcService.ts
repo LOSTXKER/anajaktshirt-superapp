@@ -104,6 +104,7 @@ export function getQCResultLabel(result: QCResult): { label: string; label_th: s
     fail: { label: 'Fail', label_th: 'ไม่ผ่าน', color: 'red' },
     partial: { label: 'Partial', label_th: 'ผ่านบางส่วน', color: 'yellow' },
     pending: { label: 'Pending', label_th: 'รอตรวจ', color: 'gray' },
+    pass_with_rework: { label: 'Pass with Rework', label_th: 'ผ่าน+แก้ไข', color: 'orange' },
   };
   return labels[result];
 }
