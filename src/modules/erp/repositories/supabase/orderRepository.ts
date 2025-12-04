@@ -31,20 +31,33 @@ function dbToOrder(row: Tables<'orders'> & {
   work_items?: Tables<'order_work_items'>[];
   payments?: Tables<'order_payments'>[];
 }): Order {
+  // Build customer snapshot from customer data
+  const customerSnapshot = row.customer ? {
+    id: row.customer.id,
+    name: row.customer.name || 'ไม่ระบุชื่อ',
+    phone: row.customer.phone,
+    email: row.customer.email,
+    tier: row.customer.tier,
+    company_name: row.customer.company_name,
+  } : null;
+
   return {
     id: row.id,
     order_number: row.order_number,
     customer_id: row.customer_id,
-    customer_name: row.customer?.name || '',
+    customer_name: customerSnapshot?.name || '',
+    customer_snapshot: customerSnapshot,
     order_type_code: row.order_type_code,
     status: row.status as Order['status'],
     priority: row.priority,
+    priority_code: row.priority?.toString() || 'normal',
+    production_mode: 'in_house', // Default, should come from order_type
     order_date: row.order_date,
     due_date: row.due_date,
     completed_date: row.completed_date,
     sales_channel: row.sales_channel,
     payment_status: row.payment_status as Order['payment_status'],
-    paid_amount: row.paid_amount,
+    paid_amount: parseFloat(row.paid_amount as string) || 0,
     total_quantity: row.total_quantity,
     pricing: row.pricing as Order['pricing'],
     shipping_address: row.shipping_address as Order['shipping_address'],
@@ -149,10 +162,13 @@ export class SupabaseOrderRepository implements IOrderRepository {
   ): Promise<PaginatedResult<Order>> {
     console.log('Fetching orders with filters:', filters);
     
-    // Simple query without join first to test
+    // Query with customer join
     let query = this.supabase
       .from('orders')
-      .select('*', { count: 'exact' });
+      .select(`
+        *,
+        customer:customers(*)
+      `, { count: 'exact' });
 
     // Apply filters
     if (filters?.status) {

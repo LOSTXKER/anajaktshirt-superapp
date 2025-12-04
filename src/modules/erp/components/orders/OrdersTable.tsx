@@ -361,9 +361,9 @@ export function OrdersTable({ orders, loading, onCopyLink, onCancel }: OrdersTab
                     {/* Customer */}
                     <td className="px-4 py-4">
                       <div className="text-[#1D1D1F] font-medium">
-                        {order.customer_snapshot.name}
+                        {order.customer_snapshot?.name || 'ไม่ระบุลูกค้า'}
                       </div>
-                      {order.customer_snapshot.tier && (
+                      {order.customer_snapshot?.tier && (
                         <div className="text-xs text-[#86868B] capitalize">
                           {order.customer_snapshot.tier} member
                         </div>
