@@ -9,32 +9,91 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ==================== ENUMS ====================
 
-CREATE TYPE customer_tier AS ENUM ('bronze', 'silver', 'gold', 'platinum');
-CREATE TYPE order_status AS ENUM (
-  'draft', 'quoted', 'awaiting_payment', 'designing', 
-  'awaiting_mockup_approval', 'mockup_approved', 'awaiting_material',
-  'in_production', 'qc_pending', 'ready_to_ship', 
-  'shipped', 'completed', 'cancelled', 'on_hold'
-);
-CREATE TYPE payment_status AS ENUM ('unpaid', 'partial', 'paid', 'refunded');
-CREATE TYPE work_item_status AS ENUM ('pending', 'in_progress', 'completed', 'cancelled');
-CREATE TYPE production_mode AS ENUM ('in_house', 'outsource');
-CREATE TYPE production_job_status AS ENUM (
-  'pending', 'queued', 'assigned', 'in_progress', 
-  'qc_check', 'qc_passed', 'qc_failed', 'rework', 
-  'completed', 'cancelled'
-);
-CREATE TYPE work_category AS ENUM ('printing', 'embroidery', 'garment', 'labeling', 'packaging', 'finishing');
-CREATE TYPE approval_status AS ENUM ('pending', 'approved', 'rejected');
-CREATE TYPE po_status AS ENUM ('draft', 'sent', 'confirmed', 'partial', 'received', 'cancelled');
-CREATE TYPE change_request_status AS ENUM ('pending', 'quoted', 'approved', 'rejected', 'completed', 'cancelled');
-CREATE TYPE qc_result AS ENUM ('pass', 'fail', 'partial');
-CREATE TYPE financial_doc_status AS ENUM ('draft', 'pending', 'sent', 'accepted', 'rejected', 'paid', 'partial', 'cancelled', 'overdue');
+DO $$ BEGIN
+  CREATE TYPE customer_tier AS ENUM ('bronze', 'silver', 'gold', 'platinum');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE order_status AS ENUM (
+    'draft', 'quoted', 'awaiting_payment', 'designing', 
+    'awaiting_mockup_approval', 'mockup_approved', 'awaiting_material',
+    'in_production', 'qc_pending', 'ready_to_ship', 
+    'shipped', 'completed', 'cancelled', 'on_hold'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE payment_status AS ENUM ('unpaid', 'partial', 'paid', 'refunded');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE work_item_status AS ENUM ('pending', 'in_progress', 'completed', 'cancelled');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE production_mode AS ENUM ('in_house', 'outsource');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE production_job_status AS ENUM (
+    'pending', 'queued', 'assigned', 'in_progress', 
+    'qc_check', 'qc_passed', 'qc_failed', 'rework', 
+    'completed', 'cancelled'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE work_category AS ENUM ('printing', 'embroidery', 'garment', 'labeling', 'packaging', 'finishing');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE approval_status AS ENUM ('pending', 'approved', 'rejected');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE po_status AS ENUM ('draft', 'sent', 'confirmed', 'partial', 'received', 'cancelled');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE change_request_status AS ENUM ('pending', 'quoted', 'approved', 'rejected', 'completed', 'cancelled');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE qc_result AS ENUM ('pass', 'fail', 'partial');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE financial_doc_status AS ENUM ('draft', 'pending', 'sent', 'accepted', 'rejected', 'paid', 'partial', 'cancelled', 'overdue');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 -- ==================== CORE TABLES ====================
 
 -- Customers
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS IF NOT EXISTS customers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   company_name VARCHAR(255),
@@ -51,7 +110,7 @@ CREATE TABLE customers (
 );
 
 -- Orders
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_number VARCHAR(50) UNIQUE NOT NULL,
   customer_id UUID REFERENCES customers(id) ON DELETE RESTRICT,
@@ -76,7 +135,7 @@ CREATE TABLE orders (
 );
 
 -- Order Work Items
-CREATE TABLE order_work_items (
+CREATE TABLE IF NOT EXISTS order_work_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
   work_type_code VARCHAR(50) NOT NULL,
@@ -96,7 +155,7 @@ CREATE TABLE order_work_items (
 );
 
 -- Order Work Item Products
-CREATE TABLE order_work_item_products (
+CREATE TABLE IF NOT EXISTS order_work_item_products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   work_item_id UUID REFERENCES order_work_items(id) ON DELETE CASCADE,
   product_id UUID,
@@ -110,7 +169,7 @@ CREATE TABLE order_work_item_products (
 );
 
 -- Order Payments
-CREATE TABLE order_payments (
+CREATE TABLE IF NOT EXISTS order_payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
   amount DECIMAL(12,2) NOT NULL,
@@ -127,7 +186,7 @@ CREATE TABLE order_payments (
 );
 
 -- Order Designs
-CREATE TABLE order_designs (
+CREATE TABLE IF NOT EXISTS order_designs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
   work_item_id UUID REFERENCES order_work_items(id) ON DELETE SET NULL,
@@ -139,7 +198,7 @@ CREATE TABLE order_designs (
 );
 
 -- Design Versions
-CREATE TABLE design_versions (
+CREATE TABLE IF NOT EXISTS design_versions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   design_id UUID REFERENCES order_designs(id) ON DELETE CASCADE,
   version_number INTEGER NOT NULL,
@@ -157,7 +216,7 @@ CREATE TABLE design_versions (
 );
 
 -- Order Mockups
-CREATE TABLE order_mockups (
+CREATE TABLE IF NOT EXISTS order_mockups (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
   design_version_id UUID REFERENCES design_versions(id) ON DELETE SET NULL,
@@ -173,7 +232,7 @@ CREATE TABLE order_mockups (
 -- ==================== PRODUCTION TABLES ====================
 
 -- Production Stations
-CREATE TABLE production_stations (
+CREATE TABLE IF NOT EXISTS production_stations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(100) NOT NULL,
   code VARCHAR(50) UNIQUE NOT NULL,
@@ -187,7 +246,7 @@ CREATE TABLE production_stations (
 );
 
 -- Production Jobs
-CREATE TABLE production_jobs (
+CREATE TABLE IF NOT EXISTS production_jobs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   job_number VARCHAR(50) UNIQUE NOT NULL,
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
@@ -212,7 +271,7 @@ CREATE TABLE production_jobs (
 -- ==================== SUPPLIER TABLES ====================
 
 -- Suppliers
-CREATE TABLE suppliers (
+CREATE TABLE IF NOT EXISTS suppliers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   contact_name VARCHAR(255),
@@ -228,7 +287,7 @@ CREATE TABLE suppliers (
 );
 
 -- Purchase Orders
-CREATE TABLE purchase_orders (
+CREATE TABLE IF NOT EXISTS purchase_orders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   po_number VARCHAR(50) UNIQUE NOT NULL,
   supplier_id UUID REFERENCES suppliers(id) ON DELETE RESTRICT,
@@ -244,7 +303,7 @@ CREATE TABLE purchase_orders (
 );
 
 -- Purchase Order Items
-CREATE TABLE purchase_order_items (
+CREATE TABLE IF NOT EXISTS purchase_order_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   purchase_order_id UUID REFERENCES purchase_orders(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
@@ -258,7 +317,7 @@ CREATE TABLE purchase_order_items (
 
 -- ==================== CHANGE REQUEST TABLES ====================
 
-CREATE TABLE change_requests (
+CREATE TABLE IF NOT EXISTS change_requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   request_number VARCHAR(50) UNIQUE NOT NULL,
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
@@ -277,7 +336,7 @@ CREATE TABLE change_requests (
 
 -- ==================== QC TABLES ====================
 
-CREATE TABLE qc_records (
+CREATE TABLE IF NOT EXISTS qc_records (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
   production_job_id UUID REFERENCES production_jobs(id) ON DELETE SET NULL,
@@ -296,7 +355,7 @@ CREATE TABLE qc_records (
 
 -- ==================== FINANCIAL TABLES ====================
 
-CREATE TABLE quotations (
+CREATE TABLE IF NOT EXISTS quotations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   quotation_number VARCHAR(50) UNIQUE NOT NULL,
   order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
@@ -321,7 +380,7 @@ CREATE TABLE quotations (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE invoices (
+CREATE TABLE IF NOT EXISTS invoices (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   invoice_number VARCHAR(50) UNIQUE NOT NULL,
   order_id UUID REFERENCES orders(id) ON DELETE RESTRICT,
@@ -342,7 +401,7 @@ CREATE TABLE invoices (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE receipts (
+CREATE TABLE IF NOT EXISTS receipts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   receipt_number VARCHAR(50) UNIQUE NOT NULL,
   invoice_id UUID REFERENCES invoices(id) ON DELETE RESTRICT,
@@ -361,7 +420,7 @@ CREATE TABLE receipts (
 
 -- ==================== CONFIG TABLES ====================
 
-CREATE TABLE work_types (
+CREATE TABLE IF NOT EXISTS work_types (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code VARCHAR(50) UNIQUE NOT NULL,
   name VARCHAR(100) NOT NULL,
@@ -374,7 +433,7 @@ CREATE TABLE work_types (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE order_types (
+CREATE TABLE IF NOT EXISTS order_types (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code VARCHAR(50) UNIQUE NOT NULL,
   name VARCHAR(100) NOT NULL,
@@ -388,7 +447,7 @@ CREATE TABLE order_types (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   sku VARCHAR(50) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -406,7 +465,7 @@ CREATE TABLE products (
 
 -- ==================== USER TABLES ====================
 
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email VARCHAR(255) NOT NULL,
   full_name VARCHAR(255),
@@ -418,7 +477,7 @@ CREATE TABLE profiles (
 );
 
 -- Notifications
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL,
@@ -472,6 +531,20 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 -- Basic RLS Policies (Allow all for authenticated users)
 -- In production, you should create more specific policies
 
+-- Drop existing policies first
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON customers;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON orders;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON order_work_items;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON order_payments;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON production_jobs;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON suppliers;
+DROP POLICY IF EXISTS "Allow all for authenticated users" ON purchase_orders;
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
+
+-- Create policies
 CREATE POLICY "Allow all for authenticated users" ON customers FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON orders FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow all for authenticated users" ON order_work_items FOR ALL USING (auth.role() = 'authenticated');
@@ -494,6 +567,15 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tr_customers_updated_at ON customers;
+DROP TRIGGER IF EXISTS tr_orders_updated_at ON orders;
+DROP TRIGGER IF EXISTS tr_work_items_updated_at ON order_work_items;
+DROP TRIGGER IF EXISTS tr_payments_updated_at ON order_payments;
+DROP TRIGGER IF EXISTS tr_production_jobs_updated_at ON production_jobs;
+DROP TRIGGER IF EXISTS tr_suppliers_updated_at ON suppliers;
+DROP TRIGGER IF EXISTS tr_purchase_orders_updated_at ON purchase_orders;
+DROP TRIGGER IF EXISTS tr_profiles_updated_at ON profiles;
 
 CREATE TRIGGER tr_customers_updated_at BEFORE UPDATE ON customers FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER tr_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
