@@ -55,6 +55,24 @@ CREATE TABLE IF NOT EXISTS order_work_items (
 -- Index for order_work_items
 CREATE INDEX IF NOT EXISTS idx_order_work_items_order_id ON order_work_items(order_id);
 
+-- 2.6 Order Products (if not exists) - สินค้าในรายการงาน
+CREATE TABLE IF NOT EXISTS order_products (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  work_item_id UUID REFERENCES order_work_items(id) ON DELETE CASCADE,
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+  product_id UUID,
+  product_sku TEXT,
+  product_name TEXT,
+  quantity INTEGER DEFAULT 1,
+  unit_price DECIMAL(10,2) DEFAULT 0,
+  total_price DECIMAL(10,2) DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for order_products
+CREATE INDEX IF NOT EXISTS idx_order_products_work_item_id ON order_products(work_item_id);
+CREATE INDEX IF NOT EXISTS idx_order_products_order_id ON order_products(order_id);
+
 -- 3. Order Designs - งานออกแบบ
 CREATE TABLE IF NOT EXISTS order_designs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
