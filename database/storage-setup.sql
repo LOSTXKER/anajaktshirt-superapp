@@ -7,10 +7,9 @@
 -- Create storage buckets
 INSERT INTO storage.buckets (id, name, public)
 VALUES 
-  ('designs', 'designs', true),
-  ('mockups', 'mockups', true),
-  ('slips', 'slips', true),
-  ('attachments', 'attachments', true)
+  ('designs', 'designs', false),
+  ('mockups', 'mockups', false),
+  ('payment-slips', 'payment-slips', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================
@@ -19,84 +18,85 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Drop existing policies
 DROP POLICY IF EXISTS "Authenticated users can upload designs" ON storage.objects;
-DROP POLICY IF EXISTS "Public can view designs" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can view designs" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update designs" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can delete designs" ON storage.objects;
 
 DROP POLICY IF EXISTS "Authenticated users can upload mockups" ON storage.objects;
-DROP POLICY IF EXISTS "Public can view mockups" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can view mockups" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update mockups" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can delete mockups" ON storage.objects;
 
-DROP POLICY IF EXISTS "Authenticated users can upload slips" ON storage.objects;
-DROP POLICY IF EXISTS "Public can view slips" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can delete slips" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload payment slips" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can view payment slips" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update payment slips" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete payment slips" ON storage.objects;
 
-DROP POLICY IF EXISTS "Authenticated users can upload attachments" ON storage.objects;
-DROP POLICY IF EXISTS "Public can view attachments" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can delete attachments" ON storage.objects;
-
--- Designs bucket policies
+-- ==================== DESIGNS BUCKET ====================
 CREATE POLICY "Authenticated users can upload designs"
 ON storage.objects FOR INSERT
 TO authenticated
-WITH CHECK (bucket_id = 'designs');
+WITH CHECK (bucket_id = 'designs' AND auth.role() = 'authenticated');
 
-CREATE POLICY "Public can view designs"
+CREATE POLICY "Authenticated users can view designs"
 ON storage.objects FOR SELECT
-TO public
-USING (bucket_id = 'designs');
+TO authenticated
+USING (bucket_id = 'designs' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can update designs"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'designs' AND auth.role() = 'authenticated')
+WITH CHECK (bucket_id = 'designs' AND auth.role() = 'authenticated');
 
 CREATE POLICY "Authenticated users can delete designs"
 ON storage.objects FOR DELETE
 TO authenticated
-USING (bucket_id = 'designs');
+USING (bucket_id = 'designs' AND auth.role() = 'authenticated');
 
--- Mockups bucket policies
+-- ==================== MOCKUPS BUCKET ====================
 CREATE POLICY "Authenticated users can upload mockups"
 ON storage.objects FOR INSERT
 TO authenticated
-WITH CHECK (bucket_id = 'mockups');
+WITH CHECK (bucket_id = 'mockups' AND auth.role() = 'authenticated');
 
-CREATE POLICY "Public can view mockups"
+CREATE POLICY "Authenticated users can view mockups"
 ON storage.objects FOR SELECT
-TO public
-USING (bucket_id = 'mockups');
+TO authenticated
+USING (bucket_id = 'mockups' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can update mockups"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'mockups' AND auth.role() = 'authenticated')
+WITH CHECK (bucket_id = 'mockups' AND auth.role() = 'authenticated');
 
 CREATE POLICY "Authenticated users can delete mockups"
 ON storage.objects FOR DELETE
 TO authenticated
-USING (bucket_id = 'mockups');
+USING (bucket_id = 'mockups' AND auth.role() = 'authenticated');
 
--- Slips bucket policies
-CREATE POLICY "Authenticated users can upload slips"
+-- ==================== PAYMENT SLIPS BUCKET ====================
+CREATE POLICY "Authenticated users can upload payment slips"
 ON storage.objects FOR INSERT
 TO authenticated
-WITH CHECK (bucket_id = 'slips');
+WITH CHECK (bucket_id = 'payment-slips' AND auth.role() = 'authenticated');
 
-CREATE POLICY "Public can view slips"
+CREATE POLICY "Authenticated users can view payment slips"
 ON storage.objects FOR SELECT
-TO public
-USING (bucket_id = 'slips');
+TO authenticated
+USING (bucket_id = 'payment-slips' AND auth.role() = 'authenticated');
 
-CREATE POLICY "Authenticated users can delete slips"
+CREATE POLICY "Authenticated users can update payment slips"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'payment-slips' AND auth.role() = 'authenticated')
+WITH CHECK (bucket_id = 'payment-slips' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can delete payment slips"
 ON storage.objects FOR DELETE
 TO authenticated
-USING (bucket_id = 'slips');
-
--- Attachments bucket policies
-CREATE POLICY "Authenticated users can upload attachments"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'attachments');
-
-CREATE POLICY "Public can view attachments"
-ON storage.objects FOR SELECT
-TO public
-USING (bucket_id = 'attachments');
-
-CREATE POLICY "Authenticated users can delete attachments"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (bucket_id = 'attachments');
+USING (bucket_id = 'payment-slips' AND auth.role() = 'authenticated');
 
 -- =============================================
 -- DONE!
