@@ -41,15 +41,78 @@ import { DesignManager } from '@/modules/orders/components/DesignManager';
 import { MockupManager } from '@/modules/orders/components/MockupManager';
 import { PaymentManager } from '@/modules/orders/components/PaymentManager';
 
-// Order Progress Steps Configuration
+// Order Progress Steps Configuration with Actions
 const ORDER_STEPS = [
-  { key: 'draft', label: 'ร่าง', icon: FileText, description: 'สร้างออเดอร์' },
-  { key: 'payment', label: 'ชำระเงิน', icon: DollarSign, description: 'รอชำระ/มัดจำ' },
-  { key: 'design', label: 'ออกแบบ', icon: Palette, description: 'ออกแบบงาน' },
-  { key: 'production', label: 'ผลิต', icon: Factory, description: 'กำลังผลิต' },
-  { key: 'qc', label: 'QC', icon: ClipboardCheck, description: 'ตรวจสอบคุณภาพ' },
-  { key: 'shipping', label: 'จัดส่ง', icon: Truck, description: 'เตรียม/จัดส่ง' },
-  { key: 'completed', label: 'สำเร็จ', icon: CheckCircle2, description: 'เสร็จสิ้น' },
+  { 
+    key: 'draft', 
+    label: 'ร่าง', 
+    icon: FileText, 
+    description: 'สร้างออเดอร์',
+    action: 'ยืนยันข้อมูลและส่งใบเสนอราคาให้ลูกค้า',
+    buttonText: 'ส่งใบเสนอราคา',
+    nextStatus: 'quoted',
+    tab: 'details'
+  },
+  { 
+    key: 'payment', 
+    label: 'ชำระเงิน', 
+    icon: DollarSign, 
+    description: 'รอชำระ/มัดจำ',
+    action: 'รอลูกค้าชำระเงินหรือมัดจำ แล้วบันทึกการชำระ',
+    buttonText: 'บันทึกการชำระเงิน',
+    nextStatus: 'designing',
+    tab: 'payments'
+  },
+  { 
+    key: 'design', 
+    label: 'ออกแบบ', 
+    icon: Palette, 
+    description: 'ออกแบบงาน',
+    action: 'อัปโหลดงานออกแบบและส่ง Mockup ให้ลูกค้าอนุมัติ',
+    buttonText: 'ไปหน้าออกแบบ',
+    nextStatus: 'awaiting_mockup_approval',
+    tab: 'design'
+  },
+  { 
+    key: 'production', 
+    label: 'ผลิต', 
+    icon: Factory, 
+    description: 'กำลังผลิต',
+    action: 'ส่งงานเข้าผลิตและติดตามความคืบหน้า',
+    buttonText: 'ไปหน้าการผลิต',
+    nextStatus: 'qc_pending',
+    tab: 'production'
+  },
+  { 
+    key: 'qc', 
+    label: 'QC', 
+    icon: ClipboardCheck, 
+    description: 'ตรวจสอบคุณภาพ',
+    action: 'ตรวจสอบคุณภาพงานก่อนจัดส่ง',
+    buttonText: 'ผ่าน QC',
+    nextStatus: 'ready_to_ship',
+    tab: 'production'
+  },
+  { 
+    key: 'shipping', 
+    label: 'จัดส่ง', 
+    icon: Truck, 
+    description: 'เตรียม/จัดส่ง',
+    action: 'เตรียมพัสดุ บันทึกเลข Tracking และจัดส่ง',
+    buttonText: 'บันทึกจัดส่งแล้ว',
+    nextStatus: 'shipped',
+    tab: 'details'
+  },
+  { 
+    key: 'completed', 
+    label: 'สำเร็จ', 
+    icon: CheckCircle2, 
+    description: 'เสร็จสิ้น',
+    action: 'ออเดอร์เสร็จสมบูรณ์ 🎉',
+    buttonText: null,
+    nextStatus: null,
+    tab: null
+  },
 ];
 
 // Map status to step index
@@ -83,100 +146,184 @@ const getStepFromStatus = (status: string): number => {
 };
 
 // Order Progress Bar Component (Full Version for Detail Page)
-function OrderProgressBarFull({ status }: { status: string }) {
+function OrderProgressBarFull({ 
+  status, 
+  onTabChange, 
+  onStatusChange 
+}: { 
+  status: string;
+  onTabChange: (tab: string) => void;
+  onStatusChange: (newStatus: string) => void;
+}) {
   const currentStep = getStepFromStatus(status);
+  const currentStepData = ORDER_STEPS[currentStep];
+  const progressPercent = (currentStep / (ORDER_STEPS.length - 1)) * 100;
   
   if (status === 'cancelled') {
     return (
-      <Card className="p-6 bg-red-50 border border-red-200">
-        <div className="flex items-center justify-center gap-3">
-          <Ban className="w-8 h-8 text-red-500" />
+      <Card className="p-6 bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200">
+        <div className="flex items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center">
+            <Ban className="w-8 h-8 text-white" />
+          </div>
           <div>
-            <h3 className="text-lg font-semibold text-red-700">ออเดอร์ถูกยกเลิก</h3>
-            <p className="text-sm text-red-600">ออเดอร์นี้ถูกยกเลิกแล้ว</p>
+            <h3 className="text-xl font-bold text-red-700">ออเดอร์ถูกยกเลิก</h3>
+            <p className="text-red-600">ออเดอร์นี้ถูกยกเลิกแล้ว ไม่สามารถดำเนินการต่อได้</p>
           </div>
         </div>
       </Card>
     );
   }
   
+  const isCompleted = currentStep === ORDER_STEPS.length - 1;
+  
   return (
-    <Card className="p-6 bg-white border border-[#E8E8ED]">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-[#1D1D1F]">ความคืบหน้า</h3>
-        <span className="text-sm text-[#86868B]">ขั้นตอนที่ {currentStep + 1} จาก {ORDER_STEPS.length}</span>
-      </div>
-      
-      {/* Steps */}
-      <div className="relative">
-        {/* Progress Line */}
-        <div className="absolute top-6 left-0 right-0 h-1 bg-[#E8E8ED] rounded-full" />
-        <div 
-          className="absolute top-6 left-0 h-1 bg-[#34C759] rounded-full transition-all duration-500"
-          style={{ width: `${(currentStep / (ORDER_STEPS.length - 1)) * 100}%` }}
-        />
-        
-        {/* Step Circles */}
-        <div className="relative flex justify-between">
-          {ORDER_STEPS.map((step, index) => {
-            const isCompleted = index < currentStep;
-            const isCurrent = index === currentStep;
-            const Icon = step.icon;
-            
-            return (
-              <div key={step.key} className="flex flex-col items-center" style={{ width: '14.28%' }}>
-                {/* Circle */}
-                <div 
-                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isCompleted 
-                      ? 'bg-[#34C759] text-white shadow-lg shadow-green-200' 
-                      : isCurrent 
-                        ? 'bg-[#007AFF] text-white shadow-lg shadow-blue-200 ring-4 ring-blue-100' 
-                        : 'bg-[#F5F5F7] text-[#86868B] border-2 border-[#E8E8ED]'
-                  }`}
-                >
-                  {isCompleted ? (
-                    <CheckCircle2 className="w-6 h-6" />
-                  ) : (
-                    <Icon className="w-5 h-5" />
-                  )}
-                </div>
-                
-                {/* Label */}
-                <div className="mt-3 text-center">
-                  <div className={`text-sm font-medium ${
-                    isCompleted ? 'text-[#34C759]' : isCurrent ? 'text-[#007AFF]' : 'text-[#86868B]'
-                  }`}>
-                    {step.label}
-                  </div>
-                  <div className="text-xs text-[#86868B] mt-0.5 hidden md:block">
-                    {step.description}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      
-      {/* Current Status Info */}
-      <div className="mt-6 p-4 bg-[#F5F5F7] rounded-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white">
+    <div className="space-y-4">
+      {/* Action Card - สิ่งที่ต้องทำตอนนี้ */}
+      <Card className={`p-6 border-2 ${
+        isCompleted 
+          ? 'bg-gradient-to-r from-emerald-50 to-green-100 border-emerald-300' 
+          : 'bg-gradient-to-r from-blue-50 to-indigo-100 border-blue-300'
+      }`}>
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          {/* Current Step Icon */}
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+            isCompleted ? 'bg-emerald-500' : 'bg-[#007AFF]'
+          }`}>
             {(() => {
-              const Icon = ORDER_STEPS[currentStep]?.icon || Clock;
-              return <Icon className="w-5 h-5" />;
+              const Icon = currentStepData?.icon || Clock;
+              return <Icon className="w-8 h-8 text-white" />;
             })()}
           </div>
-          <div>
-            <p className="text-sm text-[#86868B]">สถานะปัจจุบัน</p>
-            <p className="text-lg font-semibold text-[#1D1D1F]">
-              {ORDER_STEPS[currentStep]?.label || 'ไม่ทราบ'} - {ORDER_STEPS[currentStep]?.description || ''}
+          
+          {/* Info */}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
+                isCompleted ? 'bg-emerald-200 text-emerald-700' : 'bg-blue-200 text-blue-700'
+              }`}>
+                ขั้นตอนที่ {currentStep + 1}/{ORDER_STEPS.length}
+              </span>
+              <span className={`text-lg font-bold ${isCompleted ? 'text-emerald-700' : 'text-blue-700'}`}>
+                {currentStepData?.label}
+              </span>
+            </div>
+            <p className={`text-base ${isCompleted ? 'text-emerald-600' : 'text-blue-600'}`}>
+              {currentStepData?.action}
             </p>
           </div>
+          
+          {/* Action Button */}
+          {currentStepData?.buttonText && (
+            <Button 
+              onClick={() => {
+                if (currentStepData.tab) {
+                  onTabChange(currentStepData.tab);
+                }
+              }}
+              className={`whitespace-nowrap ${
+                isCompleted 
+                  ? 'bg-emerald-500 hover:bg-emerald-600' 
+                  : 'bg-[#007AFF] hover:bg-[#0066CC]'
+              }`}
+            >
+              <Play className="w-4 h-4 mr-2" />
+              {currentStepData.buttonText}
+            </Button>
+          )}
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      {/* Progress Bar */}
+      <Card className="p-6 bg-white border border-[#E8E8ED]">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-[#1D1D1F]">ความคืบหน้าทั้งหมด</h3>
+          <div className="flex items-center gap-2">
+            <div className="text-2xl font-bold text-[#007AFF]">{Math.round(progressPercent)}%</div>
+          </div>
+        </div>
+        
+        {/* Progress Track */}
+        <div className="relative mb-8">
+          {/* Background Track */}
+          <div className="absolute top-5 left-0 right-0 h-2 bg-[#E8E8ED] rounded-full" />
+          
+          {/* Progress Fill with Gradient */}
+          <div 
+            className="absolute top-5 left-0 h-2 rounded-full transition-all duration-700 ease-out"
+            style={{ 
+              width: `${progressPercent}%`,
+              background: 'linear-gradient(90deg, #34C759 0%, #30D158 50%, #32D74B 100%)',
+              boxShadow: '0 0 10px rgba(52, 199, 89, 0.5)'
+            }}
+          />
+          
+          {/* Step Dots */}
+          <div className="relative flex justify-between">
+            {ORDER_STEPS.map((step, index) => {
+              const isStepCompleted = index < currentStep;
+              const isCurrent = index === currentStep;
+              const Icon = step.icon;
+              
+              return (
+                <div 
+                  key={step.key} 
+                  className="flex flex-col items-center cursor-pointer group"
+                  style={{ width: `${100 / ORDER_STEPS.length}%` }}
+                  onClick={() => step.tab && onTabChange(step.tab)}
+                >
+                  {/* Circle */}
+                  <div 
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative z-10 ${
+                      isStepCompleted 
+                        ? 'bg-[#34C759] text-white' 
+                        : isCurrent 
+                          ? 'bg-[#007AFF] text-white ring-4 ring-blue-200 scale-110' 
+                          : 'bg-white text-[#86868B] border-2 border-[#E8E8ED] group-hover:border-[#007AFF] group-hover:text-[#007AFF]'
+                    }`}
+                  >
+                    {isStepCompleted ? (
+                      <CheckCircle2 className="w-5 h-5" />
+                    ) : (
+                      <Icon className="w-4 h-4" />
+                    )}
+                  </div>
+                  
+                  {/* Label */}
+                  <div className="mt-3 text-center">
+                    <div className={`text-xs font-medium transition-colors ${
+                      isStepCompleted 
+                        ? 'text-[#34C759]' 
+                        : isCurrent 
+                          ? 'text-[#007AFF] font-semibold' 
+                          : 'text-[#86868B] group-hover:text-[#007AFF]'
+                    }`}>
+                      {step.label}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Quick Steps Legend */}
+        <div className="flex items-center justify-center gap-6 text-xs text-[#86868B]">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#34C759]" />
+            <span>เสร็จแล้ว</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#007AFF] ring-2 ring-blue-200" />
+            <span>กำลังดำเนินการ</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-white border-2 border-[#E8E8ED]" />
+            <span>รอดำเนินการ</span>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -444,9 +591,21 @@ export default function OrderDetailPage() {
         </Card>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar with Action Guidance */}
       <div className="mb-6">
-        <OrderProgressBarFull status={order.status} />
+        <OrderProgressBarFull 
+          status={order.status} 
+          onTabChange={(tab) => setActiveTab(tab as any)}
+          onStatusChange={async (newStatus) => {
+            const result = await updateOrderStatus(orderId, newStatus as OrderStatus, '');
+            if (result.success) {
+              success('เปลี่ยนสถานะเรียบร้อย');
+              refetch();
+            } else {
+              showError(result.error || 'เกิดข้อผิดพลาด');
+            }
+          }}
+        />
       </div>
 
       {/* Tabs */}
