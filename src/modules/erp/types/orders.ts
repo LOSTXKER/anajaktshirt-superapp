@@ -605,3 +605,127 @@ export interface OrderSummary {
   is_overdue: boolean;
 }
 
+// ---------------------------------------------
+// Approval Gate Types
+// ---------------------------------------------
+
+export type ApprovalGateType = 'design' | 'mockup' | 'material' | 'payment' | 'production_start';
+export type ApprovalGateStatus = 'pending' | 'in_progress' | 'approved' | 'rejected' | 'skipped';
+
+export interface ApprovalGate {
+  id: string;
+  order_id: string;
+  
+  gate_type: ApprovalGateType;
+  gate_name: string;
+  gate_name_th: string;
+  description?: string;
+  
+  // Status
+  status: ApprovalGateStatus;
+  is_mandatory: boolean;
+  can_skip: boolean;
+  
+  // Requirements
+  requires_customer_approval: boolean;
+  requires_admin_approval: boolean;
+  
+  // Progress
+  progress_percent: number;
+  total_items: number;
+  approved_items: number;
+  
+  // Approval Info
+  approved_by?: string;
+  approved_by_name?: string;
+  approved_at?: string;
+  
+  // Customer Confirmation
+  customer_confirmed: boolean;
+  customer_confirmed_at?: string;
+  customer_ip?: string;
+  customer_signature?: string;
+  
+  // Notes
+  notes?: string;
+  rejection_reason?: string;
+  
+  // Timestamps
+  started_at?: string;
+  completed_at?: string;
+  
+  // Order
+  sort_order: number;
+  
+  created_at: string;
+  updated_at?: string;
+}
+
+// Design Approval Flow
+export interface DesignApprovalSummary {
+  order_id: string;
+  total_designs: number;
+  approved_designs: number;
+  pending_designs: number;
+  rejected_designs: number;
+  
+  total_revisions: number;
+  free_revisions_used: number;
+  paid_revisions_count: number;
+  paid_revisions_total: number;
+  
+  all_approved: boolean;
+  last_updated: string;
+}
+
+// Mockup Approval Flow
+export interface MockupApprovalSummary {
+  order_id: string;
+  total_mockups: number;
+  approved_mockups: number;
+  pending_mockups: number;
+  
+  current_version: number;
+  has_customer_feedback: boolean;
+  
+  all_approved: boolean;
+  approved_at?: string;
+}
+
+// Material Ready Summary
+export interface MaterialReadySummary {
+  order_id: string;
+  total_items: number;
+  ready_items: number;
+  pending_items: number;
+  
+  out_of_stock_items: number;
+  pending_purchase_orders: number;
+  
+  all_ready: boolean;
+  eta?: string;
+}
+
+// Complete Gate Summary for an Order
+export interface OrderGatesSummary {
+  order_id: string;
+  order_number: string;
+  
+  gates: ApprovalGate[];
+  
+  // Quick Status
+  design_approved: boolean;
+  mockup_approved: boolean;
+  material_ready: boolean;
+  payment_confirmed: boolean;
+  
+  // Can Start Production?
+  production_unlocked: boolean;
+  blocking_gates: string[];
+  
+  // Summaries
+  design_summary?: DesignApprovalSummary;
+  mockup_summary?: MockupApprovalSummary;
+  material_summary?: MaterialReadySummary;
+}
+

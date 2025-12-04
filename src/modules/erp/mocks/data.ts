@@ -1792,3 +1792,453 @@ export const mockPurchaseOrders: PurchaseOrder[] = [
   },
 ];
 
+// ---------------------------------------------
+// Design & Design Versions (Phase 3)
+// ---------------------------------------------
+
+import type { 
+  OrderDesign, 
+  DesignVersion, 
+  OrderMockup, 
+  ApprovalGate,
+  DesignApprovalSummary,
+  MockupApprovalSummary,
+  OrderGatesSummary,
+} from '../types/orders';
+
+export const mockDesigns: OrderDesign[] = [
+  {
+    id: 'design-001',
+    order_id: 'order-001',
+    order_work_item_id: 'wi-001',
+    design_name: 'โลโก้หน้าอก',
+    position: 'front_chest_left',
+    status: 'approved',
+    assigned_designer_id: 'user-002',
+    current_version: 2,
+    final_file_url: 'https://storage.example.com/designs/design-001-v2.png',
+    revision_count: 2,
+    max_free_revisions: 2,
+    paid_revision_count: 0,
+    paid_revision_total: 0,
+    brief_text: 'โลโก้ตามไฟล์ที่ส่งมา ขนาด 8x8 ซม.',
+    reference_files: [
+      { name: 'logo-ref.jpg', url: 'https://storage.example.com/ref/logo-ref.jpg' }
+    ],
+    designer_notes: 'ปรับสีให้เข้ากับเสื้อขาว',
+    created_at: '2024-12-01T10:00:00Z',
+    updated_at: '2024-12-02T14:00:00Z',
+  },
+  {
+    id: 'design-002',
+    order_id: 'order-001',
+    order_work_item_id: 'wi-002',
+    design_name: 'พิมพ์หลังเต็ม',
+    position: 'back_full',
+    status: 'pending',
+    assigned_designer_id: 'user-002',
+    current_version: 1,
+    revision_count: 1,
+    max_free_revisions: 2,
+    paid_revision_count: 0,
+    paid_revision_total: 0,
+    brief_text: 'รายชื่อพนักงาน 50 คน พื้นหลังสีฟ้า',
+    created_at: '2024-12-01T10:30:00Z',
+    updated_at: '2024-12-01T10:30:00Z',
+  },
+  {
+    id: 'design-003',
+    order_id: 'order-002',
+    design_name: 'DTF หน้าอก',
+    position: 'front_chest_center',
+    status: 'approved',
+    current_version: 1,
+    final_file_url: 'https://storage.example.com/designs/design-003-v1.png',
+    revision_count: 1,
+    max_free_revisions: 2,
+    paid_revision_count: 0,
+    paid_revision_total: 0,
+    brief_text: 'ลายตามไฟล์ที่ลูกค้าส่งมา',
+    created_at: '2024-11-28T10:00:00Z',
+    updated_at: '2024-11-29T11:00:00Z',
+  },
+  {
+    id: 'design-004',
+    order_id: 'order-003',
+    design_name: 'โลโก้หน้าอก',
+    position: 'front_chest_left',
+    status: 'revision_requested',
+    current_version: 3,
+    revision_count: 3,
+    max_free_revisions: 2,
+    paid_revision_count: 1,
+    paid_revision_total: 200,
+    brief_text: 'โลโก้บริษัท + ชื่อพนักงาน',
+    designer_notes: 'แก้รอบที่ 3 - เปลี่ยนสีตัวอักษร',
+    created_at: '2024-12-02T09:00:00Z',
+    updated_at: '2024-12-04T10:00:00Z',
+  },
+];
+
+export const mockDesignVersions: DesignVersion[] = [
+  // Design 001 - Version 1
+  {
+    id: 'dv-001',
+    order_design_id: 'design-001',
+    version_number: 1,
+    file_url: 'https://storage.example.com/designs/design-001-v1.png',
+    thumbnail_url: 'https://storage.example.com/designs/design-001-v1-thumb.png',
+    status: 'rejected',
+    revision_type: 'free',
+    revision_cost: 0,
+    change_description: 'เวอร์ชันแรก',
+    approved_by_customer: false,
+    is_final: false,
+    feedback: 'ขอปรับสีให้เข้มขึ้น',
+    feedback_by: 'customer',
+    feedback_at: '2024-12-01T15:00:00Z',
+    created_by: 'user-002',
+    created_at: '2024-12-01T11:00:00Z',
+  },
+  // Design 001 - Version 2 (Final)
+  {
+    id: 'dv-002',
+    order_design_id: 'design-001',
+    version_number: 2,
+    file_url: 'https://storage.example.com/designs/design-001-v2.png',
+    thumbnail_url: 'https://storage.example.com/designs/design-001-v2-thumb.png',
+    status: 'approved',
+    revision_type: 'free',
+    revision_cost: 0,
+    change_description: 'ปรับสีตามคำขอ',
+    approved_by_customer: true,
+    customer_approved_at: '2024-12-02T10:00:00Z',
+    is_final: true,
+    feedback: 'สวยมากครับ',
+    feedback_by: 'customer',
+    feedback_at: '2024-12-02T10:00:00Z',
+    created_by: 'user-002',
+    created_at: '2024-12-02T09:00:00Z',
+  },
+  // Design 002 - Version 1
+  {
+    id: 'dv-003',
+    order_design_id: 'design-002',
+    version_number: 1,
+    file_url: 'https://storage.example.com/designs/design-002-v1.png',
+    thumbnail_url: 'https://storage.example.com/designs/design-002-v1-thumb.png',
+    status: 'pending',
+    revision_type: 'free',
+    revision_cost: 0,
+    change_description: 'เวอร์ชันแรก',
+    approved_by_customer: false,
+    is_final: false,
+    created_by: 'user-002',
+    created_at: '2024-12-01T14:00:00Z',
+  },
+  // Design 004 - Multiple versions with paid revision
+  {
+    id: 'dv-004',
+    order_design_id: 'design-004',
+    version_number: 1,
+    file_url: 'https://storage.example.com/designs/design-004-v1.png',
+    status: 'rejected',
+    revision_type: 'free',
+    revision_cost: 0,
+    approved_by_customer: false,
+    is_final: false,
+    feedback: 'ขอเปลี่ยน font',
+    feedback_by: 'customer',
+    created_at: '2024-12-02T10:00:00Z',
+  },
+  {
+    id: 'dv-005',
+    order_design_id: 'design-004',
+    version_number: 2,
+    file_url: 'https://storage.example.com/designs/design-004-v2.png',
+    status: 'rejected',
+    revision_type: 'free',
+    revision_cost: 0,
+    approved_by_customer: false,
+    is_final: false,
+    feedback: 'ขอเปลี่ยนสี',
+    feedback_by: 'customer',
+    created_at: '2024-12-03T09:00:00Z',
+  },
+  {
+    id: 'dv-006',
+    order_design_id: 'design-004',
+    version_number: 3,
+    file_url: 'https://storage.example.com/designs/design-004-v3.png',
+    status: 'pending',
+    revision_type: 'paid', // แก้เกิน 2 ครั้ง = คิดเงิน
+    revision_cost: 200,
+    change_description: 'แก้ไขครั้งที่ 3 (คิดค่าแก้ไข ฿200)',
+    approved_by_customer: false,
+    is_final: false,
+    created_at: '2024-12-04T10:00:00Z',
+  },
+];
+
+// ---------------------------------------------
+// Mockups
+// ---------------------------------------------
+
+export const mockMockups: OrderMockup[] = [
+  {
+    id: 'mockup-001',
+    order_id: 'order-001',
+    order_design_id: 'design-001',
+    version_number: 1,
+    front_image_url: 'https://storage.example.com/mockups/mockup-001-front.jpg',
+    back_image_url: 'https://storage.example.com/mockups/mockup-001-back.jpg',
+    additional_images: [],
+    status: 'approved',
+    customer_feedback: 'ตรงตามต้องการ',
+    approved_at: '2024-12-02T14:00:00Z',
+    created_by: 'user-002',
+    created_at: '2024-12-02T12:00:00Z',
+  },
+  {
+    id: 'mockup-002',
+    order_id: 'order-002',
+    version_number: 1,
+    front_image_url: 'https://storage.example.com/mockups/mockup-002-front.jpg',
+    status: 'approved',
+    approved_at: '2024-11-29T15:00:00Z',
+    created_by: 'user-001',
+    created_at: '2024-11-29T13:00:00Z',
+  },
+  {
+    id: 'mockup-003',
+    order_id: 'order-003',
+    version_number: 1,
+    front_image_url: 'https://storage.example.com/mockups/mockup-003-front.jpg',
+    back_image_url: 'https://storage.example.com/mockups/mockup-003-back.jpg',
+    status: 'pending',
+    created_by: 'user-002',
+    created_at: '2024-12-04T09:00:00Z',
+  },
+];
+
+// ---------------------------------------------
+// Approval Gates
+// ---------------------------------------------
+
+export const mockApprovalGates: ApprovalGate[] = [
+  // Order 001 - All gates passed
+  {
+    id: 'gate-001-design',
+    order_id: 'order-001',
+    gate_type: 'design',
+    gate_name: 'Design Approval',
+    gate_name_th: 'อนุมัติแบบ',
+    description: 'ลูกค้าต้องอนุมัติไฟล์ออกแบบทั้งหมด',
+    status: 'approved',
+    is_mandatory: true,
+    can_skip: false,
+    requires_customer_approval: true,
+    requires_admin_approval: false,
+    progress_percent: 100,
+    total_items: 2,
+    approved_items: 2,
+    approved_by: 'customer',
+    approved_at: '2024-12-02T10:00:00Z',
+    customer_confirmed: true,
+    customer_confirmed_at: '2024-12-02T10:00:00Z',
+    started_at: '2024-12-01T10:00:00Z',
+    completed_at: '2024-12-02T10:00:00Z',
+    sort_order: 1,
+    created_at: '2024-12-01T09:00:00Z',
+  },
+  {
+    id: 'gate-001-mockup',
+    order_id: 'order-001',
+    gate_type: 'mockup',
+    gate_name: 'Mockup Approval',
+    gate_name_th: 'อนุมัติตัวอย่าง',
+    description: 'ลูกค้าต้องอนุมัติ Mockup ก่อนผลิต',
+    status: 'approved',
+    is_mandatory: true,
+    can_skip: false,
+    requires_customer_approval: true,
+    requires_admin_approval: false,
+    progress_percent: 100,
+    total_items: 1,
+    approved_items: 1,
+    approved_by: 'customer',
+    approved_at: '2024-12-02T14:00:00Z',
+    customer_confirmed: true,
+    customer_confirmed_at: '2024-12-02T14:00:00Z',
+    notes: 'ลูกค้ายืนยันว่าตรงตามต้องการ',
+    started_at: '2024-12-02T12:00:00Z',
+    completed_at: '2024-12-02T14:00:00Z',
+    sort_order: 2,
+    created_at: '2024-12-01T09:00:00Z',
+  },
+  {
+    id: 'gate-001-material',
+    order_id: 'order-001',
+    gate_type: 'material',
+    gate_name: 'Material Ready',
+    gate_name_th: 'วัสดุพร้อม',
+    description: 'ตรวจสอบวัสดุทั้งหมดพร้อมผลิต',
+    status: 'approved',
+    is_mandatory: true,
+    can_skip: false,
+    requires_customer_approval: false,
+    requires_admin_approval: true,
+    progress_percent: 100,
+    total_items: 50,
+    approved_items: 50,
+    approved_by: 'user-001',
+    approved_by_name: 'Admin',
+    approved_at: '2024-12-02T15:00:00Z',
+    customer_confirmed: false,
+    sort_order: 3,
+    created_at: '2024-12-01T09:00:00Z',
+  },
+  
+  // Order 003 - Pending gates
+  {
+    id: 'gate-003-design',
+    order_id: 'order-003',
+    gate_type: 'design',
+    gate_name: 'Design Approval',
+    gate_name_th: 'อนุมัติแบบ',
+    status: 'in_progress',
+    is_mandatory: true,
+    can_skip: false,
+    requires_customer_approval: true,
+    requires_admin_approval: false,
+    progress_percent: 50,
+    total_items: 2,
+    approved_items: 1,
+    customer_confirmed: false,
+    notes: 'รอลูกค้าอนุมัติงานที่ 2',
+    started_at: '2024-12-02T09:00:00Z',
+    sort_order: 1,
+    created_at: '2024-12-02T08:00:00Z',
+  },
+  {
+    id: 'gate-003-mockup',
+    order_id: 'order-003',
+    gate_type: 'mockup',
+    gate_name: 'Mockup Approval',
+    gate_name_th: 'อนุมัติตัวอย่าง',
+    status: 'pending',
+    is_mandatory: true,
+    can_skip: false,
+    requires_customer_approval: true,
+    requires_admin_approval: false,
+    progress_percent: 0,
+    total_items: 1,
+    approved_items: 0,
+    customer_confirmed: false,
+    sort_order: 2,
+    created_at: '2024-12-02T08:00:00Z',
+  },
+  {
+    id: 'gate-003-material',
+    order_id: 'order-003',
+    gate_type: 'material',
+    gate_name: 'Material Ready',
+    gate_name_th: 'วัสดุพร้อม',
+    status: 'pending',
+    is_mandatory: true,
+    can_skip: false,
+    requires_customer_approval: false,
+    requires_admin_approval: true,
+    progress_percent: 0,
+    total_items: 200,
+    approved_items: 0,
+    customer_confirmed: false,
+    notes: 'รอของจาก Supplier',
+    sort_order: 3,
+    created_at: '2024-12-02T08:00:00Z',
+  },
+];
+
+// ---------------------------------------------
+// Helper: Get Gates Summary for Order
+// ---------------------------------------------
+
+export function getOrderGatesSummary(orderId: string): OrderGatesSummary | null {
+  const gates = mockApprovalGates.filter(g => g.order_id === orderId);
+  if (gates.length === 0) return null;
+  
+  const order = mockOrders.find(o => o.id === orderId);
+  if (!order) return null;
+  
+  const designGate = gates.find(g => g.gate_type === 'design');
+  const mockupGate = gates.find(g => g.gate_type === 'mockup');
+  const materialGate = gates.find(g => g.gate_type === 'material');
+  
+  const blockingGates = gates
+    .filter(g => g.is_mandatory && g.status !== 'approved' && g.status !== 'skipped')
+    .map(g => g.gate_name_th);
+  
+  return {
+    order_id: orderId,
+    order_number: order.order_number,
+    gates,
+    design_approved: designGate?.status === 'approved',
+    mockup_approved: mockupGate?.status === 'approved',
+    material_ready: materialGate?.status === 'approved',
+    payment_confirmed: order.payment_status === 'paid' || order.payment_status === 'deposit_paid',
+    production_unlocked: blockingGates.length === 0,
+    blocking_gates: blockingGates,
+  };
+}
+
+// ---------------------------------------------
+// Design Approval Summary Helper
+// ---------------------------------------------
+
+export function getDesignApprovalSummary(orderId: string): DesignApprovalSummary | null {
+  const designs = mockDesigns.filter(d => d.order_id === orderId);
+  if (designs.length === 0) return null;
+  
+  return {
+    order_id: orderId,
+    total_designs: designs.length,
+    approved_designs: designs.filter(d => d.status === 'approved').length,
+    pending_designs: designs.filter(d => d.status === 'pending' || d.status === 'in_progress').length,
+    rejected_designs: designs.filter(d => d.status === 'revision_requested').length,
+    total_revisions: designs.reduce((sum, d) => sum + d.revision_count, 0),
+    free_revisions_used: designs.reduce((sum, d) => sum + Math.min(d.revision_count, d.max_free_revisions), 0),
+    paid_revisions_count: designs.reduce((sum, d) => sum + d.paid_revision_count, 0),
+    paid_revisions_total: designs.reduce((sum, d) => sum + d.paid_revision_total, 0),
+    all_approved: designs.every(d => d.status === 'approved'),
+    last_updated: designs.reduce((latest, d) => 
+      d.updated_at && d.updated_at > latest ? d.updated_at : latest, 
+      designs[0]?.updated_at || ''
+    ),
+  };
+}
+
+// ---------------------------------------------
+// Mockup Approval Summary Helper
+// ---------------------------------------------
+
+export function getMockupApprovalSummary(orderId: string): MockupApprovalSummary | null {
+  const mockups = mockMockups.filter(m => m.order_id === orderId);
+  if (mockups.length === 0) return null;
+  
+  const latestMockup = mockups.reduce((latest, m) => 
+    m.version_number > latest.version_number ? m : latest,
+    mockups[0]
+  );
+  
+  return {
+    order_id: orderId,
+    total_mockups: mockups.length,
+    approved_mockups: mockups.filter(m => m.status === 'approved').length,
+    pending_mockups: mockups.filter(m => m.status === 'pending').length,
+    current_version: latestMockup.version_number,
+    has_customer_feedback: !!latestMockup.customer_feedback,
+    all_approved: mockups.every(m => m.status === 'approved'),
+    approved_at: latestMockup.approved_at,
+  };
+}
+
