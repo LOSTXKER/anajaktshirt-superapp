@@ -91,7 +91,7 @@ export class SupabaseFinancialRepository {
 
   // ==================== FINANCIAL SUMMARY ====================
 
-  async getFinancialSummary(): Promise<FinancialSummary> {
+  async getSummary(): Promise<FinancialSummary> {
     const { data: invoices } = await this.supabase
       .from('invoices')
       .select('total_amount, paid_amount, outstanding_amount, status');
@@ -133,7 +133,13 @@ export class SupabaseFinancialRepository {
       invoices_overdue,
       revenue_growth_percent,
       conversion_rate_percent: parseFloat(conversion_rate_percent.toFixed(1)),
+      outstanding_amount: total_outstanding, // Alias for dashboard compatibility
     };
+  }
+
+  // Alias for backward compatibility
+  async getFinancialSummary(): Promise<FinancialSummary> {
+    return this.getSummary();
   }
 
   // ==================== QUOTATIONS ====================

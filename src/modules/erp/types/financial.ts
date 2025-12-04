@@ -7,6 +7,21 @@
 import type { BaseEntity, UserRef, BaseFilters } from './common';
 
 // ---------------------------------------------
+// Financial Document Status (unified)
+// ---------------------------------------------
+
+export type FinancialDocumentStatus =
+  | 'draft'
+  | 'pending'
+  | 'sent'
+  | 'accepted'
+  | 'rejected'
+  | 'paid'
+  | 'partial'
+  | 'cancelled'
+  | 'overdue';
+
+// ---------------------------------------------
 // Quotation
 // ---------------------------------------------
 
@@ -208,6 +223,27 @@ export interface Receipt extends BaseEntity {
 // ---------------------------------------------
 
 export interface FinancialSummary {
+  // Revenue
+  total_revenue: number;
+  total_paid: number;
+  total_outstanding: number;
+  total_overdue: number;
+  outstanding_amount: number; // Alias for compatibility
+  
+  // Counts
+  quotations_count: number;
+  quotations_pending: number;
+  invoices_count: number;
+  invoices_pending: number;
+  invoices_overdue: number;
+  
+  // Percentages
+  revenue_growth_percent: number;
+  conversion_rate_percent: number;
+}
+
+// Legacy nested structure (for backward compatibility if needed)
+export interface FinancialSummaryNested {
   period: {
     from: string;
     to: string;
