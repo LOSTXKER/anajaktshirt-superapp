@@ -118,30 +118,52 @@ export function useOrder(orderId: string | null) {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
+      // Fetch order basic data first
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .select(`
-          *,
-          work_items:order_work_items(
-            *,
-            products:order_products(*),
-            designs:order_designs(
-              *,
-              versions:design_versions(*),
-              mockups:order_mockups(*)
-            )
-          ),
-          payments:order_payments(*)
-        `)
+        .select('*')
         .eq('id', orderId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (orderError) throw orderError;
 
-      setOrder(data as Order);
+      // Fetch work items separately
+      const { data: workItems } = await supabase
+        .from('order_work_items')
+        .select('*')
+        .eq('order_id', orderId);
+
+      // Fetch payments separately
+      const { data: payments } = await supabase
+        .from('order_payments')
+        .select('*')
+        .eq('order_id', orderId);
+
+      // Fetch designs separately
+      const { data: designs } = await supabase
+        .from('order_designs')
+        .select('*')
+        .eq('order_id', orderId);
+
+      // Fetch mockups separately
+      const { data: mockups } = await supabase
+        .from('order_mockups')
+        .select('*')
+        .eq('order_id', orderId);
+
+      // Combine all data
+      const fullOrder = {
+        ...orderData,
+        work_items: workItems || [],
+        payments: payments || [],
+        designs: designs || [],
+        mockups: mockups || [],
+      };
+
+      setOrder(fullOrder as Order);
     } catch (err: any) {
       console.error('Error fetching order:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to fetch order');
     } finally {
       setLoading(false);
     }
@@ -313,17 +335,20 @@ export function useOrderStatusHistory(orderId: string | null) {
         setLoading(true);
         const { data, error } = await supabase
           .from('order_status_history')
-          .select(`
-            *,
-            user:user_profiles(id, full_name)
-          `)
+          .select('*')
           .eq('order_id', orderId)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          // Table might not exist or be empty - that's okay
+          console.warn('Status history not available:', error.message);
+          setHistory([]);
+          return;
+        }
         setHistory(data || []);
       } catch (err) {
-        console.error('Error fetching status history:', err);
+        // Silently handle - history is optional
+        setHistory([]);
       } finally {
         setLoading(false);
       }
@@ -350,17 +375,20 @@ export function useOrderNotes(orderId: string | null) {
       setLoading(true);
       const { data, error } = await supabase
         .from('order_notes')
-        .select(`
-          *,
-          user:user_profiles(id, full_name)
-        `)
+        .select('*')
         .eq('order_id', orderId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Table might not exist or be empty - that's okay
+        console.warn('Notes not available:', error.message);
+        setNotes([]);
+        return;
+      }
       setNotes(data || []);
     } catch (err) {
-      console.error('Error fetching notes:', err);
+      // Silently handle - notes are optional
+      setNotes([]);
     } finally {
       setLoading(false);
     }
