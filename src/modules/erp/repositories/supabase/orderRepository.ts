@@ -130,23 +130,47 @@ export class SupabaseOrderRepository implements IOrderRepository {
   async findById(id: string): Promise<Order | null> {
     const { data, error } = await this.supabase
       .from('orders')
-      .select(`*, customer:customers(*)`)
+      .select('*')
       .eq('id', id)
       .single();
 
     if (error || !data) return null;
-    return dbToOrder(data);
+    
+    // Fetch customer separately
+    let customerData = null;
+    if (data.customer_id) {
+      const { data: customer } = await this.supabase
+        .from('customers')
+        .select('*')
+        .eq('id', data.customer_id)
+        .single();
+      customerData = customer;
+    }
+    
+    return dbToOrder({ ...data, customer: customerData });
   }
 
   async findByOrderNumber(orderNumber: string): Promise<Order | null> {
     const { data, error } = await this.supabase
       .from('orders')
-      .select(`*, customer:customers(*)`)
+      .select('*')
       .eq('order_number', orderNumber)
       .single();
 
     if (error || !data) return null;
-    return dbToOrder(data);
+    
+    // Fetch customer separately
+    let customerData = null;
+    if (data.customer_id) {
+      const { data: customer } = await this.supabase
+        .from('customers')
+        .select('*')
+        .eq('id', data.customer_id)
+        .single();
+      customerData = customer;
+    }
+    
+    return dbToOrder({ ...data, customer: customerData });
   }
 
   async findByAccessToken(token: string): Promise<Order | null> {
@@ -278,7 +302,7 @@ export class SupabaseOrderRepository implements IOrderRepository {
         design_free_revisions: input.design_free_revisions || 2,
         created_by: input.created_by,
       })
-      .select(`*, customer:customers(*)`)
+      .select('*')
       .single();
 
     if (error) {
@@ -286,7 +310,18 @@ export class SupabaseOrderRepository implements IOrderRepository {
       return { success: false, message: error.message };
     }
 
-    return { success: true, data: dbToOrder(data) };
+    // Fetch customer separately if exists
+    let customerData = null;
+    if (data.customer_id) {
+      const { data: customer } = await this.supabase
+        .from('customers')
+        .select('*')
+        .eq('id', data.customer_id)
+        .single();
+      customerData = customer;
+    }
+
+    return { success: true, data: dbToOrder({ ...data, customer: customerData }) };
   }
 
   async update(id: string, input: UpdateOrderInput): Promise<ActionResult<Order>> {
@@ -297,7 +332,7 @@ export class SupabaseOrderRepository implements IOrderRepository {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select(`*, customer:customers(*)`)
+      .select('*')
       .single();
 
     if (error) {
@@ -305,7 +340,18 @@ export class SupabaseOrderRepository implements IOrderRepository {
       return { success: false, message: error.message };
     }
 
-    return { success: true, data: dbToOrder(data) };
+    // Fetch customer separately if exists
+    let customerData = null;
+    if (data.customer_id) {
+      const { data: customer } = await this.supabase
+        .from('customers')
+        .select('*')
+        .eq('id', data.customer_id)
+        .single();
+      customerData = customer;
+    }
+
+    return { success: true, data: dbToOrder({ ...data, customer: customerData }) };
   }
 
   async delete(id: string): Promise<ActionResult> {
@@ -808,8 +854,7 @@ export class SupabaseOrderRepository implements IOrderRepository {
       .from('orders')
       .select(`
         id, order_number, status, payment_status, paid_amount, due_date, order_date,
-        customer:customers(name),
-        pricing
+        customer_id, pricing
       `, { count: 'exact' });
 
     // Apply filters (same as findMany)
@@ -846,11 +891,26 @@ export class SupabaseOrderRepository implements IOrderRepository {
       };
     }
 
+    // Fetch customers separately
+    const customerIds = [...new Set((data || []).map((o: any) => o.customer_id).filter(Boolean))];
+    let customersMap: Record<string, any> = {};
+    
+    if (customerIds.length > 0) {
+      const { data: customers } = await this.supabase
+        .from('customers')
+        .select('id, name')
+        .in('id', customerIds);
+      
+      if (customers) {
+        customersMap = Object.fromEntries(customers.map(c => [c.id, c]));
+      }
+    }
+
     const now = new Date();
     const summaries: OrderSummary[] = (data || []).map((o: any) => ({
       id: o.id,
       order_number: o.order_number,
-      customer_name: o.customer?.name || '',
+      customer_name: o.customer_id ? customersMap[o.customer_id]?.name || '' : '',
       status: o.status,
       payment_status: o.payment_status,
       total_amount: o.pricing?.total_amount || 0,

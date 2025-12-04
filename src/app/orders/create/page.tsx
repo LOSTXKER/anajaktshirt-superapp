@@ -39,6 +39,7 @@ import {
   useERPOrderConfig,
   useERPWorkDependencies,
 } from '@/modules/erp';
+import { useOrderMutations } from '@/modules/orders/hooks/useOrderMutations';
 import type { Customer, Product, OrderType, PriorityLevel, WorkType } from '@/modules/erp';
 
 // ---------------------------------------------
@@ -157,6 +158,7 @@ export default function CreateOrderPage() {
   const { workTypes, getWorkTypeByCode, workTypesByCategory } = useERPWorkTypes();
   const { addonTypes, getAddonTypeByCode } = useERPAddonTypes();
   const { positions, sizes, getPositionByCode, getSizeByCode } = useERPPrintConfig();
+  const { createOrder, loading: creatingOrder } = useOrderMutations();
   
   // Work Dependencies Hook
   const {
@@ -436,12 +438,49 @@ export default function CreateOrderPage() {
 
   const handleSubmit = async () => {
     try {
-      // TODO: Call createOrder service
-      console.log('Creating order:', formData);
-      success('สร้างออเดอร์สำเร็จ!');
-      router.push('/orders');
-    } catch (err) {
-      showError('เกิดข้อผิดพลาด กรุณาลองใหม่');
+      // Calculate pricing
+      const pricing = {
+        subtotal: calculateSubtotal(),
+        discount_percent: formData.discount_percent,
+        discount_amount: formData.discount_amount,
+        total_amount: calculateGrandTotal(),
+        tax_amount: 0,
+      };
+
+      // Build order input
+      const orderInput = {
+        customer_id: formData.customer_id || undefined,
+        order_type_code: formData.order_type_code,
+        priority: parseInt(formData.priority_code) || 0,
+        sales_channel: formData.sales_channel,
+        due_date: formData.due_date || undefined,
+        total_quantity: formData.work_items.reduce((sum, wi) => sum + wi.quantity, 0),
+        pricing,
+        shipping_address: formData.shipping_address ? {
+          name: formData.shipping_name,
+          phone: formData.shipping_phone,
+          address: formData.shipping_address,
+          district: formData.shipping_district,
+          province: formData.shipping_province,
+          postal_code: formData.shipping_postal_code,
+        } : null,
+        notes: formData.customer_note || undefined,
+        internal_notes: formData.internal_note || undefined,
+      };
+
+      console.log('Creating order:', orderInput);
+      
+      const result = await createOrder(orderInput);
+      
+      if (result.success) {
+        success('สร้างออเดอร์สำเร็จ!');
+        router.push('/orders');
+      } else {
+        showError(result.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+      }
+    } catch (err: any) {
+      console.error('Error creating order:', err);
+      showError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
     }
   };
 
