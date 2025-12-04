@@ -383,7 +383,7 @@ export function OrdersTable({ orders, loading, onCopyLink, onCancel }: OrdersTab
                     {/* Total Amount */}
                     <td className="px-4 py-4">
                       <span className="text-[#1D1D1F] font-semibold">
-                        {formatCurrency(order.pricing.total_amount)}
+                        {formatCurrency(order.pricing?.total_amount || 0)}
                       </span>
                     </td>
 
@@ -396,20 +396,20 @@ export function OrdersTable({ orders, loading, onCopyLink, onCancel }: OrdersTab
                           ? 'text-amber-600' 
                           : 'text-[#86868B]'
                       }`}>
-                        {formatCurrency(order.paid_amount)}
+                        {formatCurrency(order.paid_amount || 0)}
                       </div>
-                      {order.payment_status !== 'paid' && order.pricing.total_amount > 0 && (
+                      {order.payment_status !== 'paid' && (order.pricing?.total_amount || 0) > 0 && (
                         <div className="flex items-center gap-1 mt-1">
                           <div className="h-1.5 w-16 bg-gray-200 rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-amber-500 rounded-full transition-all"
                               style={{ 
-                                width: `${Math.round((order.paid_amount / order.pricing.total_amount) * 100)}%` 
+                                width: `${Math.round(((order.paid_amount || 0) / (order.pricing?.total_amount || 1)) * 100)}%` 
                               }}
                             />
                           </div>
                           <span className="text-[10px] text-[#86868B]">
-                            {Math.round((order.paid_amount / order.pricing.total_amount) * 100)}%
+                            {Math.round(((order.paid_amount || 0) / (order.pricing?.total_amount || 1)) * 100)}%
                           </span>
                         </div>
                       )}
