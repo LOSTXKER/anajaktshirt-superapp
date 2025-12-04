@@ -228,6 +228,13 @@ export const ORDER_STATUS_CONFIG: Record<OrderStatus, StatusDisplayConfig> = {
   cancelled: { label: 'Cancelled', label_th: 'ยกเลิก', color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 
+export const PAYMENT_STATUS_CONFIG: Record<PaymentStatus, StatusDisplayConfig> = {
+  unpaid: { label: 'Unpaid', label_th: 'ยังไม่ชำระ', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  partial: { label: 'Partial', label_th: 'ชำระบางส่วน', color: 'text-amber-600', bgColor: 'bg-amber-100' },
+  paid: { label: 'Paid', label_th: 'ชำระแล้ว', color: 'text-green-600', bgColor: 'bg-green-100' },
+  refunded: { label: 'Refunded', label_th: 'คืนเงินแล้ว', color: 'text-red-600', bgColor: 'bg-red-100' },
+};
+
 export const PRIORITY_CONFIG: Record<PriorityCode, StatusDisplayConfig & { surcharge_percent: number; lead_modifier: number }> = {
   normal: { label: 'Normal', label_th: 'ปกติ', color: 'text-gray-600', bgColor: 'bg-gray-100', surcharge_percent: 0, lead_modifier: 1.0 },
   rush: { label: 'Rush', label_th: 'เร่ง', color: 'text-amber-600', bgColor: 'bg-amber-100', surcharge_percent: 20, lead_modifier: 0.7 },
