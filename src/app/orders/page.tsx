@@ -19,9 +19,112 @@ import {
   MoreVertical,
   Copy,
   Edit,
+  FileText,
+  Palette,
+  Factory,
+  ClipboardCheck,
+  Ban,
 } from 'lucide-react';
 import { useOrders, useOrderStats } from '@/modules/orders/hooks/useOrders';
 import { ORDER_STATUS_CONFIG, type OrderStatus, type OrderFilters } from '@/modules/orders/types';
+
+// Order Progress Steps
+const ORDER_STEPS = [
+  { key: 'draft', label: 'ร่าง', icon: FileText },
+  { key: 'payment', label: 'ชำระเงิน', icon: DollarSign },
+  { key: 'design', label: 'ออกแบบ', icon: Palette },
+  { key: 'production', label: 'ผลิต', icon: Factory },
+  { key: 'qc', label: 'QC', icon: ClipboardCheck },
+  { key: 'shipping', label: 'จัดส่ง', icon: Truck },
+  { key: 'completed', label: 'สำเร็จ', icon: CheckCircle2 },
+];
+
+// Map status to step index
+const getStepFromStatus = (status: OrderStatus): number => {
+  switch (status) {
+    case 'draft':
+    case 'quoted':
+      return 0;
+    case 'awaiting_payment':
+    case 'partial_paid':
+      return 1;
+    case 'designing':
+    case 'awaiting_mockup_approval':
+      return 2;
+    case 'in_production':
+    case 'awaiting_material':
+    case 'queued':
+      return 3;
+    case 'qc_pending':
+      return 4;
+    case 'ready_to_ship':
+    case 'shipped':
+      return 5;
+    case 'completed':
+      return 6;
+    case 'cancelled':
+      return -1;
+    default:
+      return 0;
+  }
+};
+
+// Order Progress Bar Component
+function OrderProgressBar({ status }: { status: OrderStatus }) {
+  const currentStep = getStepFromStatus(status);
+  
+  if (status === 'cancelled') {
+    return (
+      <div className="flex items-center gap-1 text-red-500">
+        <Ban className="w-3 h-3" />
+        <span className="text-xs">ยกเลิก</span>
+      </div>
+    );
+  }
+  
+  const progress = ((currentStep + 1) / ORDER_STEPS.length) * 100;
+  
+  return (
+    <div className="w-full max-w-[200px]">
+      {/* Progress Bar */}
+      <div className="flex items-center gap-0.5 mb-1">
+        {ORDER_STEPS.map((step, index) => {
+          const isCompleted = index < currentStep;
+          const isCurrent = index === currentStep;
+          const Icon = step.icon;
+          
+          return (
+            <div key={step.key} className="flex-1 flex flex-col items-center">
+              <div 
+                className={`w-full h-1.5 rounded-full transition-all ${
+                  isCompleted 
+                    ? 'bg-[#34C759]' 
+                    : isCurrent 
+                      ? 'bg-[#007AFF]' 
+                      : 'bg-[#E8E8ED]'
+                }`}
+              />
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Current Step Label */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-xs text-[#86868B]">
+          {(() => {
+            const Icon = ORDER_STEPS[currentStep]?.icon || Clock;
+            return <Icon className="w-3 h-3" />;
+          })()}
+          <span>{ORDER_STEPS[currentStep]?.label || 'ไม่ทราบ'}</span>
+        </div>
+        <span className="text-xs text-[#86868B]">
+          {currentStep + 1}/{ORDER_STEPS.length}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 // Simple Action Menu Component
 function ActionMenu({ orderId, accessToken }: { orderId: string; accessToken: string | null }) {
@@ -273,9 +376,8 @@ export default function OrdersPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#86868B] uppercase">เลขออเดอร์</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#86868B] uppercase">ลูกค้า</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#86868B] uppercase">สถานะ</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[#86868B] uppercase">ความคืบหน้า</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#86868B] uppercase">ยอดรวม</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[#86868B] uppercase">ชำระแล้ว</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[#86868B] uppercase">วันที่สั่ง</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#86868B] uppercase">กำหนดส่ง</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-[#86868B] uppercase">จัดการ</th>
               </tr>
@@ -283,7 +385,7 @@ export default function OrdersPage() {
             <tbody className="divide-y divide-[#E8E8ED]">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-[#86868B]">
+                  <td colSpan={7} className="px-4 py-8 text-center text-[#86868B]">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
                       กำลังโหลด...
@@ -292,7 +394,7 @@ export default function OrdersPage() {
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-[#86868B]">
+                  <td colSpan={7} className="px-4 py-8 text-center text-[#86868B]">
                     <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>ไม่พบออเดอร์</p>
                     <Link href="/orders/create" className="text-[#007AFF] hover:underline">
@@ -325,27 +427,29 @@ export default function OrdersPage() {
                           {statusConfig?.label_th}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-[#1D1D1F] font-medium">
-                        {formatCurrency(order.total_amount)}
+                      <td className="px-4 py-3">
+                        <OrderProgressBar status={order.status} />
                       </td>
                       <td className="px-4 py-3">
-                        <div className={order.payment_status === 'paid' ? 'text-green-600' : order.payment_status === 'partial' ? 'text-yellow-600' : 'text-[#86868B]'}>
-                          {formatCurrency(order.paid_amount)}
+                        <div className="text-[#1D1D1F] font-medium">
+                          {formatCurrency(order.total_amount)}
                         </div>
-                        {order.payment_status !== 'paid' && order.total_amount > 0 && (
-                          <div className="text-xs text-[#86868B]">
-                            ({Math.round((order.paid_amount / order.total_amount) * 100)}%)
+                        {order.payment_status !== 'paid' && order.total_amount > 0 ? (
+                          <div className={`text-xs ${order.payment_status === 'partial' ? 'text-yellow-600' : 'text-[#86868B]'}`}>
+                            ชำระแล้ว {Math.round((order.paid_amount / order.total_amount) * 100)}%
                           </div>
+                        ) : order.payment_status === 'paid' && (
+                          <div className="text-xs text-green-600">ชำระแล้ว ✓</div>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-[#1D1D1F]">
-                        {formatDate(order.order_date)}
                       </td>
                       <td className="px-4 py-3">
                         <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-500' : 'text-[#1D1D1F]'}`}>
                           {isOverdue && <AlertCircle className="w-4 h-4" />}
                           {formatDate(order.due_date)}
                         </div>
+                        {isOverdue && (
+                          <div className="text-xs text-red-500">เกินกำหนด!</div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
