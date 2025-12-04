@@ -1,8 +1,7 @@
 // =============================================
 // ANAJAK ERP MODULE
 // =============================================
-// Database-agnostic ERP system
-// Supports: Mock (dev), Supabase (current), MySQL (future)
+// Clean, simple ERP module using Supabase
 // =============================================
 
 // Types
@@ -17,88 +16,39 @@ export * from './hooks';
 // Components
 export * from './components';
 
-// Storage (localStorage)
-export * from './storage';
-
-// Mock Repository (for development)
-export { createMockRepository } from './mocks';
+// Repositories (direct access)
+export { supabaseOrderRepository } from './repositories/supabase/orderRepository';
+export { supabaseProductionRepository } from './repositories/supabase/productionRepository';
+export { supabaseSupplierRepository } from './repositories/supabase/supplierRepository';
+export { supabaseConfigRepository } from './repositories/supabase/configRepository';
 
 // ---------------------------------------------
-// Initialize ERP Module
-// ---------------------------------------------
-// Call this in your app initialization
-// 
-// For development (mock data):
-//   import { initializeERP } from '@/modules/erp';
-//   initializeERP('mock');
-// 
-// For production (Supabase):
-//   import { initializeERP } from '@/modules/erp';
-//   initializeERP('supabase');
-// 
-// For future MySQL:
-//   import { initializeERP } from '@/modules/erp';
-//   initializeERP('mysql');
+// Auto-initialize Repository
 // ---------------------------------------------
 
-import { setRepository, type IRepositoryFactory } from './services/repository';
-// import { createMockRepository } from './mocks'; // Mock removed
+import { setRepository } from './services/repository';
 import { createSupabaseRepository } from './repositories/supabase';
 
-export type DatabaseProvider = 'supabase' | 'mysql';
+// Initialize once on module load
+let initialized = false;
 
-let isInitialized = false;
-let currentProvider: DatabaseProvider | null = null;
-
-export function initializeERP(provider: DatabaseProvider = 'supabase'): void {
-  if (isInitialized && currentProvider === provider) {
-    console.log(`ERP already initialized with ${provider}`);
-    return;
+function initializeRepository() {
+  if (initialized) return;
+  
+  try {
+    const repository = createSupabaseRepository();
+    setRepository(repository);
+    initialized = true;
+    console.log('✅ ERP Repository initialized (Supabase)');
+  } catch (error) {
+    console.error('❌ Failed to initialize ERP Repository:', error);
   }
-
-  let repository: IRepositoryFactory;
-
-  switch (provider) {
-    case 'supabase':
-      repository = createSupabaseRepository();
-      console.log('🗄️ ERP initialized with SUPABASE (production mode)');
-      break;
-
-    case 'mysql':
-      // TODO: Implement MySQLRepository (Prisma)
-      console.warn('⚠️ MySQL repository not implemented yet, falling back to Supabase');
-      repository = createSupabaseRepository();
-      break;
-
-    default:
-      console.warn(`⚠️ Unknown provider: ${provider}, using Supabase`);
-      repository = createSupabaseRepository();
-  }
-
-  setRepository(repository);
-  isInitialized = true;
-  currentProvider = provider;
 }
 
-// Auto-initialize
+// Auto-initialize on client side
 if (typeof window !== 'undefined') {
-  initializeERP('supabase');
+  initializeRepository();
 }
 
-export function getERPProvider(): DatabaseProvider | null {
-  return currentProvider;
-}
-
-export function isERPInitialized(): boolean {
-  return isInitialized;
-}
-
-// ---------------------------------------------
-// Auto-initialize with mock in development
-// ---------------------------------------------
-
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  // Use Supabase even in development
-  initializeERP('supabase');
-}
-
+// Export for manual initialization if needed
+export { initializeRepository };

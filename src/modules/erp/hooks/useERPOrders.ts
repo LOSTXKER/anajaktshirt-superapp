@@ -2,12 +2,11 @@
 // ERP ORDER HOOKS
 // =============================================
 // React hooks for ERP order operations
-// Uses mock data in development, real API in production
 // =============================================
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   getOrders,
   getOrder,
@@ -21,7 +20,6 @@ import {
   addPayment,
   verifyPayment,
 } from '../services/orderService';
-import { initializeERP, isERPInitialized } from '../index';
 import type {
   Order,
   OrderWorkItem,
@@ -32,19 +30,8 @@ import type {
   CreateWorkItemInput,
   CreatePaymentInput,
   OrderStats,
-  OrderSummary,
 } from '../types/orders';
 import type { PaginationParams, PaginatedResult } from '../types/common';
-
-// ---------------------------------------------
-// Initialize ERP on first use
-// ---------------------------------------------
-
-function ensureERPInitialized() {
-  if (!isERPInitialized()) {
-    initializeERP('supabase');
-  }
-}
 
 // ---------------------------------------------
 // useERPOrders - Main orders list hook
@@ -73,7 +60,6 @@ export function useERPOrders(options: UseERPOrdersOptions = {}): UseERPOrdersRet
   const [paginationState, setPaginationState] = useState<PaginatedResult<Order>['pagination'] | null>(null);
 
   const fetchOrders = useCallback(async () => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
     
@@ -126,7 +112,6 @@ export function useERPOrder(orderId: string | null): UseERPOrderReturn {
       return;
     }
 
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -169,7 +154,6 @@ export function useERPOrderStats(filters?: OrderFilters): UseERPOrderStatsReturn
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -212,7 +196,6 @@ export function useERPOrderMutations(): UseERPOrderMutationsReturn {
   const [error, setError] = useState<string | null>(null);
 
   const handleCreateOrder = useCallback(async (data: CreateOrderInput): Promise<Order | null> => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -232,7 +215,6 @@ export function useERPOrderMutations(): UseERPOrderMutationsReturn {
   }, []);
 
   const handleUpdateOrder = useCallback(async (id: string, data: UpdateOrderInput): Promise<Order | null> => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -252,7 +234,6 @@ export function useERPOrderMutations(): UseERPOrderMutationsReturn {
   }, []);
 
   const handleUpdateStatus = useCallback(async (id: string, status: string, reason?: string): Promise<boolean> => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -303,7 +284,6 @@ export function useERPWorkItems(orderId: string | null): UseERPWorkItemsReturn {
       return;
     }
 
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -322,7 +302,6 @@ export function useERPWorkItems(orderId: string | null): UseERPWorkItemsReturn {
   }, [fetchWorkItems]);
 
   const handleAddWorkItem = useCallback(async (data: CreateWorkItemInput): Promise<OrderWorkItem | null> => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -376,7 +355,6 @@ export function useERPPayments(orderId: string | null): UseERPPaymentsReturn {
       return;
     }
 
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -395,7 +373,6 @@ export function useERPPayments(orderId: string | null): UseERPPaymentsReturn {
   }, [fetchPayments]);
 
   const handleAddPayment = useCallback(async (data: CreatePaymentInput): Promise<OrderPayment | null> => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
@@ -416,7 +393,6 @@ export function useERPPayments(orderId: string | null): UseERPPaymentsReturn {
   }, []);
 
   const handleVerifyPayment = useCallback(async (paymentId: string): Promise<boolean> => {
-    ensureERPInitialized();
     setLoading(true);
     setError(null);
 
