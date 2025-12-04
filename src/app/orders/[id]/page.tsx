@@ -28,6 +28,9 @@ import {
   Palette,
   ClipboardCheck,
   Ban,
+  Calculator,
+  Calendar,
+  Bell,
 } from 'lucide-react';
 import { useOrder, useOrderStatusHistory, useOrderNotes } from '@/modules/orders/hooks/useOrders';
 import { useOrderMutations } from '@/modules/orders/hooks/useOrderMutations';
@@ -40,6 +43,10 @@ import {
 import { DesignManager } from '@/modules/orders/components/DesignManager';
 import { MockupManager } from '@/modules/orders/components/MockupManager';
 import { PaymentManager } from '@/modules/orders/components/PaymentManager';
+import { CostBreakdown } from '@/modules/orders/components/CostBreakdown';
+import { SLATimeline } from '@/modules/orders/components/SLATimeline';
+import { DocumentGenerator } from '@/modules/orders/components/DocumentGenerator';
+import { NotificationCenter } from '@/modules/orders/components/NotificationCenter';
 
 // Order Progress Steps Configuration with Actions
 const ORDER_STEPS = [
@@ -344,7 +351,7 @@ export default function OrderDetailPage() {
   } = useOrderMutations();
 
   // UI State
-  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'design' | 'mockup' | 'payments' | 'production' | 'notes' | 'history'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'design' | 'mockup' | 'payments' | 'production' | 'cost' | 'timeline' | 'documents' | 'notifications' | 'notes' | 'history'>('details');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
   const [statusReason, setStatusReason] = useState('');
@@ -617,6 +624,10 @@ export default function OrderDetailPage() {
           { key: 'mockup', label: 'Mockup', icon: Image },
           { key: 'production', label: 'การผลิต', icon: Factory },
           { key: 'payments', label: 'การชำระเงิน', icon: DollarSign },
+          { key: 'cost', label: 'ต้นทุน', icon: Calculator },
+          { key: 'timeline', label: 'Timeline', icon: Calendar },
+          { key: 'documents', label: 'เอกสาร', icon: FileText },
+          { key: 'notifications', label: 'แจ้งเตือน', icon: Bell },
           { key: 'notes', label: 'หมายเหตุ', icon: MessageSquare },
           { key: 'history', label: 'ประวัติ', icon: Clock },
         ].map((tab) => (
@@ -1052,6 +1063,49 @@ export default function OrderDetailPage() {
               onRefresh={refetch}
             />
           </Card>
+        )}
+
+        {/* Cost Tab */}
+        {activeTab === 'cost' && (
+          <CostBreakdown
+            orderId={orderId}
+            totalRevenue={order.total_amount}
+            onSave={(costs) => {
+              // TODO: Save costs to database
+              console.log('Saving costs:', costs);
+            }}
+          />
+        )}
+
+        {/* Timeline Tab */}
+        {activeTab === 'timeline' && (
+          <SLATimeline
+            orderId={orderId}
+            currentStatus={order.status}
+            orderDate={order.order_date}
+            dueDate={order.due_date}
+            onSave={(timeline) => {
+              // TODO: Save timeline to database
+              console.log('Saving timeline:', timeline);
+            }}
+          />
+        )}
+
+        {/* Documents Tab */}
+        {activeTab === 'documents' && (
+          <DocumentGenerator order={order as Order} />
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && (
+          <NotificationCenter
+            order={order as Order}
+            onSendNotification={async (type, channel, message) => {
+              // TODO: Implement actual notification sending
+              console.log('Sending notification:', { type, channel, message });
+              return true;
+            }}
+          />
         )}
 
         {/* Notes Tab */}

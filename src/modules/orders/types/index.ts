@@ -521,6 +521,139 @@ export interface OrderStats {
   overdue_orders: number;
 }
 
+// =============================================
+// COST & PROFITABILITY TYPES
+// =============================================
+
+export interface OrderCost {
+  // Material Costs
+  material_cost: number;      // ต้นทุนวัตถุดิบ (เสื้อ, หมึก)
+  
+  // Labor Costs
+  design_cost: number;        // ค่าออกแบบ
+  printing_cost: number;      // ค่าพิมพ์/สกรีน
+  finishing_cost: number;     // ค่าตกแต่ง (เย็บ, รีด)
+  
+  // Other Costs
+  packaging_cost: number;     // ค่าแพ็คของ
+  shipping_cost: number;      // ค่าขนส่ง (ต้นทุน)
+  other_cost: number;         // ค่าใช้จ่ายอื่นๆ
+  
+  // Calculated
+  total_cost: number;         // รวมต้นทุน
+  gross_profit: number;       // กำไรขั้นต้น
+  profit_margin: number;      // % กำไร
+}
+
+export interface WorkItemCost {
+  work_item_id: string;
+  material_cost: number;
+  labor_cost: number;
+  other_cost: number;
+  total_cost: number;
+}
+
+// =============================================
+// SLA & TIMELINE TYPES
+// =============================================
+
+export interface OrderTimeline {
+  order_id: string;
+  
+  // Step Deadlines
+  quoted_deadline: string | null;
+  payment_deadline: string | null;
+  design_deadline: string | null;
+  mockup_deadline: string | null;
+  production_deadline: string | null;
+  qc_deadline: string | null;
+  shipping_deadline: string | null;
+  
+  // Actual Dates
+  quoted_at: string | null;
+  payment_at: string | null;
+  design_at: string | null;
+  mockup_approved_at: string | null;
+  production_started_at: string | null;
+  production_completed_at: string | null;
+  qc_passed_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  
+  // SLA Settings
+  estimated_days: number;     // จำนวนวันทำงานโดยประมาณ
+  priority_level: 'normal' | 'urgent' | 'express';
+}
+
+export interface TimelineStep {
+  step: string;
+  label: string;
+  deadline: string | null;
+  actual: string | null;
+  status: 'pending' | 'on_track' | 'warning' | 'overdue' | 'completed';
+}
+
+// =============================================
+// NOTIFICATION TYPES
+// =============================================
+
+export type NotificationType = 
+  | 'order_created'
+  | 'payment_received'
+  | 'design_uploaded'
+  | 'mockup_ready'
+  | 'mockup_approved'
+  | 'production_started'
+  | 'production_completed'
+  | 'qc_passed'
+  | 'ready_to_ship'
+  | 'shipped'
+  | 'delivered'
+  | 'reminder_payment'
+  | 'reminder_mockup_approval';
+
+export interface NotificationTemplate {
+  type: NotificationType;
+  title: string;
+  message: string;
+  channels: ('line' | 'sms' | 'email')[];
+}
+
+export interface OrderNotification {
+  id: string;
+  order_id: string;
+  type: NotificationType;
+  channel: 'line' | 'sms' | 'email';
+  recipient: string;
+  message: string;
+  status: 'pending' | 'sent' | 'failed';
+  sent_at: string | null;
+  created_at: string;
+}
+
+// =============================================
+// DOCUMENT TYPES
+// =============================================
+
+export type DocumentType = 'quotation' | 'invoice' | 'receipt' | 'delivery_note' | 'tax_invoice';
+
+export interface OrderDocument {
+  id: string;
+  order_id: string;
+  document_type: DocumentType;
+  document_number: string;
+  file_url: string | null;
+  
+  // For invoices
+  due_date: string | null;
+  paid_amount: number;
+  
+  status: 'draft' | 'issued' | 'paid' | 'cancelled';
+  issued_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface OrderSummary {
   id: string;
   order_number: string;
