@@ -48,7 +48,7 @@ export function useERPQCRecords(filters?: QCRecordFilters, pagination?: Paginati
         setLoading(true);
         const result = await supabaseQCRepository.findMany(filters, pagination);
         setQCRecords(result.data);
-        setTotalCount(result.totalCount);
+        setTotalCount(result.totalCount ?? result.pagination?.total ?? 0);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -57,7 +57,7 @@ export function useERPQCRecords(filters?: QCRecordFilters, pagination?: Paginati
     };
 
     fetchQCRecords();
-  }, [filters?.order_id, filters?.production_job_id, filters?.stage, filters?.overall_result, pagination?.page, pagination?.pageSize]);
+  }, [filters?.order_id, filters?.production_job_id, filters?.qc_stage_code, filters?.overall_result, pagination?.page, pagination?.limit]);
 
   const createQCRecord = async (input: CreateQCRecordInput) => {
     try {

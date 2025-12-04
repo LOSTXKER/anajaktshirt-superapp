@@ -57,7 +57,7 @@ export function useERPChangeRequests(filters?: ChangeRequestFilters, pagination?
         setLoading(true);
         const result = await supabaseChangeRequestRepository.findMany(filters, pagination);
         setChangeRequests(result.data);
-        setTotalCount(result.totalCount);
+        setTotalCount(result.totalCount ?? result.pagination?.total ?? 0);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -143,21 +143,37 @@ export function useERPChangeRequests(filters?: ChangeRequestFilters, pagination?
   };
 
   // Calculate inline stats
+  const pending = changeRequests.filter(cr => cr.status === 'pending').length;
+  const quoted = changeRequests.filter(cr => cr.status === 'quoted').length;
+  const approved = changeRequests.filter(cr => cr.status === 'approved').length;
+  const rejected = changeRequests.filter(cr => cr.status === 'rejected').length;
+  const completed = changeRequests.filter(cr => cr.status === 'completed').length;
+  const cancelled = changeRequests.filter(cr => cr.status === 'cancelled').length;
+  const totalFees = changeRequests.reduce((sum, cr) => sum + (cr.actual_cost || cr.fees?.total_fee || 0), 0);
+  
   const stats: ChangeRequestStats = {
+    total_requests: totalCount,
     total: totalCount,
-    pending: changeRequests.filter(cr => cr.status === 'pending').length,
-    quoted: changeRequests.filter(cr => cr.status === 'quoted').length,
-    approved: changeRequests.filter(cr => cr.status === 'approved').length,
-    rejected: changeRequests.filter(cr => cr.status === 'rejected').length,
-    completed: changeRequests.filter(cr => cr.status === 'completed').length,
-    cancelled: changeRequests.filter(cr => cr.status === 'cancelled').length,
-    total_cost: changeRequests.reduce((sum, cr) => sum + (cr.actual_cost || 0), 0),
+    pending_requests: pending,
+    pending: pending,
+    awaiting_customer: changeRequests.filter(cr => cr.status === 'awaiting_customer' || cr.status === 'quoted').length,
+    total_fees_quoted: changeRequests.reduce((sum, cr) => sum + (cr.fees?.total_fee || 0), 0),
+    total_fees_collected: totalFees,
+    avg_resolution_days: 0, // Would need to calculate from completed requests
+    quoted: quoted,
+    approved: approved,
+    rejected: rejected,
+    completed: completed,
+    cancelled: cancelled,
+    total_cost: totalFees,
     by_type: changeRequests.reduce((acc, cr) => {
-      acc[cr.change_type] = (acc[cr.change_type] || 0) + 1;
+      const key = cr.change_type || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),
     by_impact: changeRequests.reduce((acc, cr) => {
-      acc[cr.impact_level] = (acc[cr.impact_level] || 0) + 1;
+      const key = cr.impact_level || cr.impact?.level || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),
   };

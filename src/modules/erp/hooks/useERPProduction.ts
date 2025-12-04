@@ -35,7 +35,7 @@ export const JOB_STATUS_CONFIG = {
   cancelled: { label: 'Cancelled', label_th: 'ยกเลิก', color: 'text-gray-500', bgColor: 'bg-gray-100' },
 };
 
-export const PRIORITY_CONFIG = {
+export const PRIORITY_LEVEL_CONFIG: Record<number, { label: string; label_th: string; color: string; bgColor: string; score: number }> = {
   0: { label: 'Normal', label_th: 'ปกติ', color: 'text-gray-600', bgColor: 'bg-gray-100', score: 0 },
   1: { label: 'Urgent', label_th: 'เร่ง', color: 'text-orange-600', bgColor: 'bg-orange-100', score: 20 },
   2: { label: 'Express', label_th: 'ด่วน', color: 'text-red-600', bgColor: 'bg-red-100', score: 50 },
@@ -65,7 +65,7 @@ export function useERPProductionJobs(options: UseERPProductionJobsOptions = {}) 
       setLoading(true);
       const result = await supabaseProductionRepository.findMany(filters, pagination);
       setJobs(result.data);
-      setTotalCount(result.totalCount);
+      setTotalCount(result.totalCount ?? result.pagination?.total ?? 0);
     } catch (err: any) {
       setError(err.message);
     } finally {
