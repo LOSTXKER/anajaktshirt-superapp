@@ -355,6 +355,34 @@ CREATE POLICY "Allow all for authenticated" ON order_notifications FOR ALL TO au
 -- Functions
 -- =============================================
 
+-- Generate Order Number
+CREATE OR REPLACE FUNCTION generate_order_number()
+RETURNS TEXT AS $$
+DECLARE
+  year_prefix TEXT;
+  next_number INTEGER;
+  result TEXT;
+BEGIN
+  year_prefix := TO_CHAR(NOW(), 'YYYY');
+  
+  SELECT COALESCE(MAX(CAST(SUBSTRING(order_number FROM 10) AS INTEGER)), 0) + 1
+  INTO next_number
+  FROM orders
+  WHERE order_number LIKE 'ORD-' || year_prefix || '-%';
+  
+  result := 'ORD-' || year_prefix || '-' || LPAD(next_number::TEXT, 4, '0');
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Generate Access Token
+CREATE OR REPLACE FUNCTION generate_access_token()
+RETURNS TEXT AS $$
+BEGIN
+  RETURN encode(gen_random_bytes(32), 'hex');
+END;
+$$ LANGUAGE plpgsql;
+
 -- Function to log status changes
 CREATE OR REPLACE FUNCTION log_order_status_change()
 RETURNS TRIGGER AS $$
