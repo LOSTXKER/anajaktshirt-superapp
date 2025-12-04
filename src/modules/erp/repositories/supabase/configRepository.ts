@@ -414,12 +414,25 @@ export class SupabaseConfigRepository {
   // ==================== PRIORITY LEVELS ====================
 
   async getPriorityLevels(): Promise<any[]> {
-    // Priority levels are usually static, return default values
-    return [
-      { code: 'normal', name: 'ปกติ', surcharge_percent: 0, lead_time_days: 0 },
-      { code: 'rush', name: 'เร่งด่วน', surcharge_percent: 20, lead_time_days: -2 },
-      { code: 'urgent', name: 'ด่วนมาก', surcharge_percent: 50, lead_time_days: -4 },
-    ];
+    const supabase = getSupabaseClient();
+    
+    const { data, error } = await supabase
+      .from('priority_levels')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    
+    if (error || !data || data.length === 0) {
+      // Fallback to default values
+      return [
+        { code: 'normal', name: 'Normal', name_th: 'ปกติ', surcharge_percent: 0, lead_time_modifier: 1.0 },
+        { code: 'rush', name: 'Rush', name_th: 'เร่ง', surcharge_percent: 20, lead_time_modifier: 0.8 },
+        { code: 'urgent', name: 'Urgent', name_th: 'ด่วน', surcharge_percent: 50, lead_time_modifier: 0.6 },
+        { code: 'emergency', name: 'Emergency', name_th: 'ด่วนพิเศษ', surcharge_percent: 100, lead_time_modifier: 0.5 },
+      ];
+    }
+    
+    return data;
   }
 }
 

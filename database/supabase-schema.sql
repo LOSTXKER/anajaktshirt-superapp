@@ -244,6 +244,30 @@ CREATE TABLE IF NOT EXISTS order_mockups (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Priority Levels
+DROP TABLE IF EXISTS priority_levels CASCADE;
+CREATE TABLE priority_levels (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  name_th VARCHAR(100) NOT NULL,
+  description TEXT,
+  surcharge_percent INTEGER DEFAULT 0,
+  lead_time_modifier DECIMAL(3,2) DEFAULT 1.0,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed Priority Levels
+INSERT INTO priority_levels (code, name, name_th, description, surcharge_percent, lead_time_modifier, sort_order) VALUES
+('normal', 'Normal', 'ปกติ', 'ระยะเวลาผลิตปกติ', 0, 1.0, 1),
+('rush', 'Rush', 'เร่ง', 'เร่งผลิต ลดเวลา 20%', 20, 0.8, 2),
+('urgent', 'Urgent', 'ด่วน', 'ด่วนมาก ลดเวลา 40%', 50, 0.6, 3),
+('emergency', 'Emergency', 'ด่วนพิเศษ', 'เร่งด่วนที่สุด ลดเวลา 50%', 100, 0.5, 4)
+ON CONFLICT (code) DO NOTHING;
+
 -- ==================== PRODUCTION TABLES ====================
 
 -- Production Stations
