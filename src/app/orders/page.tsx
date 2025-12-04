@@ -275,13 +275,6 @@ export default function OrdersPageNew() {
           </div>
         )}
 
-        {/* Dev Mode Indicator */}
-        <div className="fixed bottom-4 right-4">
-          <div className="bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 shadow-lg">
-            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-            Mock Data Mode
-          </div>
-        </div>
       </div>
     </div>
   );
