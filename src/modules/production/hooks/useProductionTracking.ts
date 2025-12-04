@@ -182,7 +182,7 @@ export function useProductionStations(department?: string) {
       let query = supabase
         .from('production_stations')
         .select('*')
-        .eq('is_active', true)
+        .or('is_active.eq.true,status.eq.active')  // Support both schema versions
         .order('department')
         .order('code');
 
@@ -192,11 +192,23 @@ export function useProductionStations(department?: string) {
 
       const { data, error: fetchError } = await query;
 
-      if (fetchError) throw fetchError;
-      setStations((data || []) as ProductionStation[]);
+      if (fetchError) {
+        // If error, try without is_active filter (table might not have the column)
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('production_stations')
+          .select('*')
+          .order('department')
+          .order('code');
+        
+        if (fallbackError) throw fallbackError;
+        setStations((fallbackData || []) as ProductionStation[]);
+      } else {
+        setStations((data || []) as ProductionStation[]);
+      }
     } catch (err: any) {
       console.error('Error fetching production stations:', err);
       setError(err.message || 'Failed to fetch stations');
+      setStations([]); // Set empty array on error for better UX
     } finally {
       setLoading(false);
     }

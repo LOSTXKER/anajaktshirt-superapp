@@ -126,3 +126,5 @@ export function PriceInput(props: Omit<NumberInputProps, 'allowDecimal' | 'allow
   return <NumberInput {...props} allowDecimal={true} allowNegative={false} />;
 }
 
+
+

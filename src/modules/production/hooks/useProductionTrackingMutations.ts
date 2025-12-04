@@ -94,10 +94,10 @@ export function useProductionTrackingMutations() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Get current job
+      // Get current job with order and work item info
       const { data: currentJob, error: fetchError } = await supabase
         .from('production_jobs')
-        .select('status')
+        .select('status, order_id, order_work_item_id')
         .eq('id', jobId)
         .single();
 
@@ -139,6 +139,76 @@ export function useProductionTrackingMutations() {
         notes: notes || null,
         performed_by: user?.id,
       });
+
+      // =============================================
+      // SYNC ORDER WORK ITEM STATUS
+      // =============================================
+      if (currentJob.order_work_item_id) {
+        // Map production status to work item status
+        const workItemStatusMap: Record<string, string> = {
+          'pending': 'pending',
+          'queued': 'pending',
+          'assigned': 'in_production',
+          'in_progress': 'in_production',
+          'qc_check': 'qc_pending',
+          'qc_passed': 'qc_passed',
+          'qc_failed': 'qc_failed',
+          'rework': 'in_production',
+          'completed': 'completed',
+        };
+
+        const workItemStatus = workItemStatusMap[newStatus];
+        if (workItemStatus) {
+          await supabase
+            .from('order_work_items')
+            .update({ 
+              status: workItemStatus,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', currentJob.order_work_item_id);
+        }
+      }
+
+      // =============================================
+      // CHECK IF ALL JOBS COMPLETED → UPDATE ORDER
+      // =============================================
+      if (newStatus === 'completed' && currentJob.order_id) {
+        // Check if all production jobs for this order are completed
+        const { data: remainingJobs, error: checkError } = await supabase
+          .from('production_jobs')
+          .select('id, status')
+          .eq('order_id', currentJob.order_id)
+          .neq('status', 'completed')
+          .neq('status', 'cancelled');
+
+        if (!checkError && remainingJobs && remainingJobs.length === 0) {
+          // All jobs completed - update order status
+          const { data: currentOrder } = await supabase
+            .from('orders')
+            .select('status')
+            .eq('id', currentJob.order_id)
+            .single();
+
+          if (currentOrder && currentOrder.status === 'in_production') {
+            await supabase
+              .from('orders')
+              .update({ 
+                status: 'qc_pending',  // Move to QC pending, not directly completed
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', currentJob.order_id);
+
+            // Log status change
+            await supabase.from('order_status_history').insert({
+              order_id: currentJob.order_id,
+              from_status: 'in_production',
+              to_status: 'qc_pending',
+              reason: 'ผลิตเสร็จสมบูรณ์ทุกรายการ',
+              changed_by: user?.id,
+            });
+          }
+        }
+      }
 
       // Audit log
       await auditService.log({
