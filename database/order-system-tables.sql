@@ -261,16 +261,28 @@ ALTER TABLE order_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for authenticated users (allow all for now)
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_status_history FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_notes FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_designs FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON design_versions FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_mockups FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_payments FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_events FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_sla FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_documents FOR ALL TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all for authenticated" ON order_notifications FOR ALL TO authenticated USING (true);
+-- Drop existing policies first, then create
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_status_history;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_notes;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_designs;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON design_versions;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_mockups;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_payments;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_events;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_sla;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_documents;
+DROP POLICY IF EXISTS "Allow all for authenticated" ON order_notifications;
+
+CREATE POLICY "Allow all for authenticated" ON order_status_history FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON order_notes FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON order_designs FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON design_versions FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON order_mockups FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON order_payments FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON order_events FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON order_sla FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON order_documents FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow all for authenticated" ON order_notifications FOR ALL TO authenticated USING (true);
 
 -- =============================================
 -- Functions
