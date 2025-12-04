@@ -98,7 +98,7 @@ export function isERPInitialized(): boolean {
 // ---------------------------------------------
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  // Auto-init in browser during development
-  initializeERP('mock');
+  // Use Supabase even in development
+  initializeERP('supabase');
 }
 
