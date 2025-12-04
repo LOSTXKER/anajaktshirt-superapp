@@ -5,254 +5,208 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { mockSuppliers, mockPurchaseOrders } from '../mocks/data';
+import { supabaseSupplierRepository } from '../repositories/supabase/supplierRepository';
 import type {
   Supplier,
   PurchaseOrder,
+  SupplierFilters,
+  PurchaseOrderFilters,
+  CreateSupplierInput,
+  UpdateSupplierInput,
+  CreatePurchaseOrderInput,
+  ReceiveGoodsInput,
+  SupplierStats,
 } from '../types/suppliers';
+import type { PaginationParams } from '../types/common';
 
 // ---------------------------------------------
 // useERPSuppliers - Suppliers list
 // ---------------------------------------------
 
-interface UseERPSuppliersOptions {
-  category?: string;
-  search?: string;
-  autoFetch?: boolean;
-}
-
-interface UseERPSuppliersReturn {
-  suppliers: Supplier[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useERPSuppliers(options: UseERPSuppliersOptions = {}): UseERPSuppliersReturn {
-  const { category, search, autoFetch = true } = options;
-  
+export function useERPSuppliers(filters?: SupplierFilters, pagination?: PaginationParams) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSuppliers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      let filtered = [...mockSuppliers];
-      
-      if (category) {
-        filtered = filtered.filter(s => 
-          s.categories?.includes(category)
-        );
-      }
-      
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filtered = filtered.filter(s =>
-          s.name.toLowerCase().includes(searchLower) ||
-          s.code.toLowerCase().includes(searchLower) ||
-          s.contact_name?.toLowerCase().includes(searchLower)
-        );
-      }
-      
-      setSuppliers(filtered);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch suppliers');
+      setLoading(true);
+      const result = await supabaseSupplierRepository.findMany(filters, pagination);
+      setSuppliers(result.data);
+      setTotalCount(result.totalCount);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [category, search]);
+  }, [filters, pagination]);
 
   useEffect(() => {
-    if (autoFetch) {
-      fetchSuppliers();
+    fetchSuppliers();
+  }, [fetchSuppliers]);
+
+  const createSupplier = async (input: CreateSupplierInput) => {
+    try {
+      const result = await supabaseSupplierRepository.create(input);
+      if (result.success && result.data) {
+        setSuppliers(prev => [result.data!, ...prev]);
+        return result.data;
+      }
+      throw new Error(result.message || 'Failed to create supplier');
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
-  }, [fetchSuppliers, autoFetch]);
+  };
+
+  const updateSupplier = async (id: string, updates: UpdateSupplierInput) => {
+    try {
+      const result = await supabaseSupplierRepository.update(id, updates);
+      if (result.success && result.data) {
+        setSuppliers(prev => prev.map(s => (s.id === id ? result.data! : s)));
+        return result.data;
+      }
+      throw new Error(result.message || 'Failed to update supplier');
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
 
   return {
     suppliers,
+    totalCount,
     loading,
     error,
     refetch: fetchSuppliers,
+    createSupplier,
+    updateSupplier,
   };
 }
 
 // ---------------------------------------------
-// useERPSupplier - Single supplier
+// useERPPurchaseOrders - Purchase orders list
 // ---------------------------------------------
 
-interface UseERPSupplierReturn {
-  supplier: Supplier | null;
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useERPSupplier(supplierId: string | null): UseERPSupplierReturn {
-  const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchSupplier = useCallback(async () => {
-    if (!supplierId) {
-      setSupplier(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const found = mockSuppliers.find(s => s.id === supplierId);
-      setSupplier(found || null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch supplier');
-    } finally {
-      setLoading(false);
-    }
-  }, [supplierId]);
-
-  useEffect(() => {
-    fetchSupplier();
-  }, [fetchSupplier]);
-
-  return {
-    supplier,
-    loading,
-    error,
-    refetch: fetchSupplier,
-  };
-}
-
-// ---------------------------------------------
-// useERPPurchaseOrders - PO list
-// ---------------------------------------------
-
-interface UseERPPurchaseOrdersOptions {
-  supplier_id?: string;
-  status?: string;
-  autoFetch?: boolean;
-}
-
-interface UseERPPurchaseOrdersReturn {
-  purchaseOrders: PurchaseOrder[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useERPPurchaseOrders(options: UseERPPurchaseOrdersOptions = {}): UseERPPurchaseOrdersReturn {
-  const { supplier_id, status, autoFetch = true } = options;
-  
+export function useERPPurchaseOrders(filters?: PurchaseOrderFilters, pagination?: PaginationParams) {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPOs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
+  const fetchPurchaseOrders = useCallback(async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      let filtered = [...mockPurchaseOrders];
-      
-      if (supplier_id) {
-        filtered = filtered.filter(po => po.supplier_id === supplier_id);
-      }
-      
-      if (status) {
-        filtered = filtered.filter(po => po.status === status);
-      }
-      
-      setPurchaseOrders(filtered);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch purchase orders');
+      setLoading(true);
+      // Note: This would need to be implemented in the repository
+      // For now, returning empty
+      setPurchaseOrders([]);
+      setTotalCount(0);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [supplier_id, status]);
+  }, [filters, pagination]);
 
   useEffect(() => {
-    if (autoFetch) {
-      fetchPOs();
+    fetchPurchaseOrders();
+  }, [fetchPurchaseOrders]);
+
+  const createPurchaseOrder = async (input: CreatePurchaseOrderInput) => {
+    try {
+      const result = await supabaseSupplierRepository.createPurchaseOrder(input);
+      if (result.success && result.data) {
+        setPurchaseOrders(prev => [result.data!, ...prev]);
+        return result.data;
+      }
+      throw new Error(result.message || 'Failed to create purchase order');
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
-  }, [fetchPOs, autoFetch]);
+  };
+
+  const sendPurchaseOrder = async (poId: string) => {
+    try {
+      const result = await supabaseSupplierRepository.sendPurchaseOrder(poId);
+      if (result.success) {
+        await fetchPurchaseOrders(); // Refresh list
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const confirmPurchaseOrder = async (poId: string) => {
+    try {
+      const result = await supabaseSupplierRepository.confirmPurchaseOrder(poId);
+      if (result.success) {
+        await fetchPurchaseOrders(); // Refresh list
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const receiveGoods = async (data: ReceiveGoodsInput) => {
+    try {
+      const result = await supabaseSupplierRepository.receiveGoods(data);
+      if (result.success) {
+        await fetchPurchaseOrders(); // Refresh list
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
 
   return {
     purchaseOrders,
+    totalCount,
     loading,
     error,
-    refetch: fetchPOs,
+    refetch: fetchPurchaseOrders,
+    createPurchaseOrder,
+    sendPurchaseOrder,
+    confirmPurchaseOrder,
+    receiveGoods,
   };
 }
 
 // ---------------------------------------------
-// useERPSupplierStats - Stats
+// useERPSupplierStats - Supplier statistics
 // ---------------------------------------------
 
-interface SupplierStats {
-  total_suppliers: number;
-  active_suppliers: number;
-  total_po: number;
-  pending_po: number;
-  total_amount_pending: number;
-}
-
-interface UseERPSupplierStatsReturn {
-  stats: SupplierStats | null;
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useERPSupplierStats(): UseERPSupplierStatsReturn {
+export function useERPSupplierStats() {
   const [stats, setStats] = useState<SupplierStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const calculatedStats: SupplierStats = {
-        total_suppliers: mockSuppliers.length,
-        active_suppliers: mockSuppliers.filter(s => s.is_active).length,
-        total_po: mockPurchaseOrders.length,
-        pending_po: mockPurchaseOrders.filter(po => 
-          ['draft', 'pending', 'confirmed'].includes(po.status)
-        ).length,
-        total_amount_pending: mockPurchaseOrders
-          .filter(po => po.payment_status !== 'paid')
-          .reduce((sum, po) => sum + po.total_amount, 0),
-      };
-      
-      setStats(calculatedStats);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch stats');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const data = await supabaseSupplierRepository.getStats();
+        setStats(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchStats();
-  }, [fetchStats]);
+  }, []);
 
   return {
     stats,
     loading,
     error,
-    refetch: fetchStats,
   };
 }
-

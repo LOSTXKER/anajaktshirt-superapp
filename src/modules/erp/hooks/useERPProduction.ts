@@ -4,17 +4,19 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  mockProductionJobs,
-  mockProductionStations,
-} from '../mocks/data';
+import { useState, useEffect, useCallback } from 'react';
+import { supabaseProductionRepository } from '../repositories/supabase/productionRepository';
 import type {
   ProductionJob,
   ProductionStation,
   ProductionStats,
   ProductionJobFilters,
+  CreateProductionJobInput,
+  UpdateProductionJobInput,
+  LogProductionInput,
+  ProductionJobSummary,
 } from '../types/production';
+import type { PaginationParams } from '../types/common';
 
 // ---------------------------------------------
 // useERPProductionJobs - Production jobs list
@@ -22,304 +24,253 @@ import type {
 
 interface UseERPProductionJobsOptions {
   filters?: ProductionJobFilters;
+  pagination?: PaginationParams;
   autoFetch?: boolean;
 }
 
-interface UseERPProductionJobsReturn {
-  jobs: ProductionJob[];
-  loading: boolean;
-  error: string | null;
-  totalCount: number;
-  refetch: () => Promise<void>;
-}
+export function useERPProductionJobs(options: UseERPProductionJobsOptions = {}) {
+  const { filters, pagination, autoFetch = true } = options;
 
-export function useERPProductionJobs(options: UseERPProductionJobsOptions = {}): UseERPProductionJobsReturn {
-  const { filters, autoFetch = true } = options;
-  
   const [jobs, setJobs] = useState<ProductionJob[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchJobs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      let filtered = [...mockProductionJobs];
-      
-      // Apply filters
-      if (filters?.status) {
-        const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
-        filtered = filtered.filter(j => statuses.includes(j.status));
-      }
-      
-      if (filters?.work_type_code) {
-        filtered = filtered.filter(j => j.work_type_code === filters.work_type_code);
-      }
-      
-      if (filters?.priority !== undefined) {
-        filtered = filtered.filter(j => j.priority === filters.priority);
-      }
-      
-      if (filters?.station_id) {
-        filtered = filtered.filter(j => j.station_id === filters.station_id);
-      }
-      
-      if (filters?.search) {
-        const search = filters.search.toLowerCase();
-        filtered = filtered.filter(j =>
-          j.job_number.toLowerCase().includes(search) ||
-          j.customer_name?.toLowerCase().includes(search) ||
-          j.order_number?.toLowerCase().includes(search) ||
-          j.description?.toLowerCase().includes(search)
-        );
-      }
-      
-      // Sort by priority (descending) then due_date
-      filtered.sort((a, b) => {
-        if (b.priority !== a.priority) return b.priority - a.priority;
-        if (a.due_date && b.due_date) {
-          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-        }
-        return 0;
-      });
-      
-      setJobs(filtered);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch production jobs');
+      setLoading(true);
+      const result = await supabaseProductionRepository.findMany(filters, pagination);
+      setJobs(result.data);
+      setTotalCount(result.totalCount);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, pagination]);
 
   useEffect(() => {
     if (autoFetch) {
       fetchJobs();
     }
-  }, [fetchJobs, autoFetch]);
+  }, [autoFetch, fetchJobs]);
+
+  const createJob = async (input: CreateProductionJobInput) => {
+    try {
+      const result = await supabaseProductionRepository.create(input);
+      if (result.success && result.data) {
+        setJobs(prev => [result.data!, ...prev]);
+        return result.data;
+      }
+      throw new Error(result.message || 'Failed to create job');
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const updateJob = async (id: string, updates: UpdateProductionJobInput) => {
+    try {
+      const result = await supabaseProductionRepository.update(id, updates);
+      if (result.success && result.data) {
+        setJobs(prev => prev.map(j => (j.id === id ? result.data! : j)));
+        return result.data;
+      }
+      throw new Error(result.message || 'Failed to update job');
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const startJob = async (jobId: string) => {
+    try {
+      const result = await supabaseProductionRepository.startJob(jobId);
+      if (result.success) {
+        await fetchJobs(); // Refresh list
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const logProduction = async (data: LogProductionInput) => {
+    try {
+      const result = await supabaseProductionRepository.logProduction(data);
+      if (result.success) {
+        await fetchJobs(); // Refresh list
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const completeJob = async (jobId: string) => {
+    try {
+      const result = await supabaseProductionRepository.completeJob(jobId);
+      if (result.success) {
+        await fetchJobs(); // Refresh list
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
 
   return {
     jobs,
+    totalCount,
     loading,
     error,
-    totalCount: jobs.length,
     refetch: fetchJobs,
+    createJob,
+    updateJob,
+    startJob,
+    logProduction,
+    completeJob,
   };
 }
 
 // ---------------------------------------------
-// useERPProductionJob - Single job
+// useERPProductionStations - Production stations
 // ---------------------------------------------
 
-interface UseERPProductionJobReturn {
-  job: ProductionJob | null;
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useERPProductionJob(jobId: string | null): UseERPProductionJobReturn {
-  const [job, setJob] = useState<ProductionJob | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchJob = useCallback(async () => {
-    if (!jobId) {
-      setJob(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const found = mockProductionJobs.find(j => j.id === jobId);
-      setJob(found || null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch job');
-    } finally {
-      setLoading(false);
-    }
-  }, [jobId]);
-
-  useEffect(() => {
-    fetchJob();
-  }, [fetchJob]);
-
-  return {
-    job,
-    loading,
-    error,
-    refetch: fetchJob,
-  };
-}
-
-// ---------------------------------------------
-// useERPProductionStations - Stations list
-// ---------------------------------------------
-
-interface UseERPProductionStationsReturn {
-  stations: ProductionStation[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useERPProductionStations(): UseERPProductionStationsReturn {
+export function useERPProductionStations() {
   const [stations, setStations] = useState<ProductionStation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStations = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      setStations(mockProductionStations);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch stations');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        setLoading(true);
+        const data = await supabaseProductionRepository.getStations();
+        setStations(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchStations();
-  }, [fetchStations]);
+  }, []);
 
   return {
     stations,
     loading,
     error,
-    refetch: fetchStations,
   };
 }
 
 // ---------------------------------------------
-// useERPProductionStats - Stats
+// useERPProductionStats - Production statistics
 // ---------------------------------------------
 
-interface UseERPProductionStatsReturn {
-  stats: ProductionStats | null;
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useERPProductionStats(): UseERPProductionStatsReturn {
+export function useERPProductionStats(filters?: ProductionJobFilters) {
   const [stats, setStats] = useState<ProductionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const jobs = mockProductionJobs;
-      const today = new Date().toDateString();
-      
-      const calculatedStats: ProductionStats = {
-        total_jobs: jobs.length,
-        pending_jobs: jobs.filter(j => ['pending', 'queued'].includes(j.status)).length,
-        in_progress_jobs: jobs.filter(j => j.status === 'in_progress').length,
-        completed_today: jobs.filter(j => 
-          j.status === 'completed' && 
-          j.completed_at && 
-          new Date(j.completed_at).toDateString() === today
-        ).length,
-        total_qty_pending: jobs
-          .filter(j => !['completed', 'cancelled'].includes(j.status))
-          .reduce((sum, j) => sum + (j.ordered_qty - j.produced_qty), 0),
-        total_qty_completed_today: jobs
-          .filter(j => j.completed_at && new Date(j.completed_at).toDateString() === today)
-          .reduce((sum, j) => sum + j.passed_qty, 0),
-        on_time_rate: 92,
-        rework_rate: 3,
-      };
-      
-      setStats(calculatedStats);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch stats');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const data = await supabaseProductionRepository.getStats(filters);
+        setStats(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchStats();
-  }, [fetchStats]);
+  }, [filters]);
 
   return {
     stats,
     loading,
     error,
-    refetch: fetchStats,
   };
 }
 
 // ---------------------------------------------
-// useERPProductionMutations - Mutations
+// useERPProductionQueue - Production queue/kanban
 // ---------------------------------------------
 
-interface UseERPProductionMutationsReturn {
-  updateJobStatus: (jobId: string, status: string, notes?: string) => Promise<{ success: boolean; error?: string }>;
-  assignJob: (jobId: string, stationId: string) => Promise<{ success: boolean; error?: string }>;
-  loading: boolean;
-  error: string | null;
-}
-
-export function useERPProductionMutations(): UseERPProductionMutationsReturn {
-  const [loading, setLoading] = useState(false);
+export function useERPProductionQueue(stationId?: string) {
+  const [queue, setQueue] = useState<ProductionJobSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const updateJobStatus = useCallback(async (jobId: string, status: string, notes?: string) => {
-    setLoading(true);
-    setError(null);
-
+  const fetchQueue = useCallback(async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      // In mock mode, just return success
-      console.log('Mock: Update job status', { jobId, status, notes });
-      return { success: true };
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to update status';
-      setError(errorMsg);
-      return { success: false, error: errorMsg };
+      setLoading(true);
+      const data = await supabaseProductionRepository.getQueue(stationId);
+      setQueue(data);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [stationId]);
 
-  const assignJob = useCallback(async (jobId: string, stationId: string) => {
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    fetchQueue();
+  }, [fetchQueue]);
 
+  const reorderQueue = async (jobIds: string[]) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      console.log('Mock: Assign job', { jobId, stationId });
-      return { success: true };
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to assign job';
-      setError(errorMsg);
-      return { success: false, error: errorMsg };
-    } finally {
-      setLoading(false);
+      const result = await supabaseProductionRepository.reorderQueue(jobIds);
+      if (result.success) {
+        await fetchQueue(); // Refresh queue
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
     }
-  }, []);
+  };
+
+  const assignToStation = async (jobId: string, stationId: string) => {
+    try {
+      const result = await supabaseProductionRepository.assignToStation(jobId, stationId);
+      if (result.success) {
+        await fetchQueue(); // Refresh queue
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const assignToWorker = async (jobId: string, workerId: string) => {
+    try {
+      const result = await supabaseProductionRepository.assignToWorker(jobId, workerId);
+      if (result.success) {
+        await fetchQueue(); // Refresh queue
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
 
   return {
-    updateJobStatus,
-    assignJob,
+    queue,
     loading,
     error,
+    refetch: fetchQueue,
+    reorderQueue,
+    assignToStation,
+    assignToWorker,
   };
 }

@@ -1,312 +1,172 @@
+// =============================================
+// ERP DESIGN & APPROVAL HOOKS
+// =============================================
+
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  mockDesigns,
-  mockDesignVersions,
-  mockMockups,
-  mockApprovalGates,
-  getOrderGatesSummary,
-  getDesignApprovalSummary,
-  getMockupApprovalSummary,
-} from '../mocks/data';
-import type { 
-  OrderDesign, 
-  DesignVersion, 
-  OrderMockup, 
+import { useState, useEffect } from 'react';
+import { supabaseOrderRepository } from '../repositories/supabase/orderRepository';
+import type {
+  OrderDesign,
+  DesignVersion,
+  OrderMockup,
   ApprovalGate,
-  DesignApprovalSummary,
-  MockupApprovalSummary,
-  OrderGatesSummary,
 } from '../types/orders';
 
 // ---------------------------------------------
-// useERPDesigns - Design Management
+// useERPDesigns - Design versions for an order
 // ---------------------------------------------
 
-interface UseERPDesignsOptions {
-  orderId?: string;
-  workItemId?: string;
-  status?: string;
-}
-
-export function useERPDesigns(options: UseERPDesignsOptions = {}) {
+export function useERPDesigns(orderId: string) {
+  const [designs, setDesigns] = useState<OrderDesign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Filter designs
-  const designs = useMemo(() => {
-    let result = [...mockDesigns];
-
-    if (options.orderId) {
-      result = result.filter(d => d.order_id === options.orderId);
-    }
-
-    if (options.workItemId) {
-      result = result.filter(d => d.order_work_item_id === options.workItemId);
-    }
-
-    if (options.status) {
-      result = result.filter(d => d.status === options.status);
-    }
-
-    return result;
-  }, [options.orderId, options.workItemId, options.status]);
-
-  const getDesignById = useCallback((id: string): OrderDesign | undefined => {
-    return mockDesigns.find(d => d.id === id);
-  }, []);
-
-  const getDesignVersions = useCallback((designId: string): DesignVersion[] => {
-    return mockDesignVersions
-      .filter(v => v.order_design_id === designId)
-      .sort((a, b) => b.version_number - a.version_number);
-  }, []);
-
-  const getLatestVersion = useCallback((designId: string): DesignVersion | undefined => {
-    const versions = getDesignVersions(designId);
-    return versions[0];
-  }, [getDesignVersions]);
-
-  // Get approval summary for order
-  const getApprovalSummary = useCallback((orderId: string): DesignApprovalSummary | null => {
-    return getDesignApprovalSummary(orderId);
-  }, []);
-
-  // Calculate revision cost
-  const calculateRevisionCost = useCallback((design: OrderDesign): number => {
-    const REVISION_COST = 200; // ฿200 per paid revision
-    if (design.revision_count <= design.max_free_revisions) {
-      return 0;
-    }
-    return (design.revision_count - design.max_free_revisions) * REVISION_COST;
-  }, []);
-
-  // Check if can request revision
-  const canRequestRevision = useCallback((design: OrderDesign): boolean => {
-    return design.status !== 'approved' && design.status !== 'completed';
-  }, []);
-
-  // Check if revision will be paid
-  const isRevisionPaid = useCallback((design: OrderDesign): boolean => {
-    return design.revision_count >= design.max_free_revisions;
-  }, []);
-
-  return {
-    designs,
-    loading,
-    getDesignById,
-    getDesignVersions,
-    getLatestVersion,
-    getApprovalSummary,
-    calculateRevisionCost,
-    canRequestRevision,
-    isRevisionPaid,
-  };
-}
-
-// ---------------------------------------------
-// useERPMockups - Mockup Management
-// ---------------------------------------------
-
-interface UseERPMockupsOptions {
-  orderId?: string;
-  status?: string;
-}
-
-export function useERPMockups(options: UseERPMockupsOptions = {}) {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Filter mockups
-  const mockups = useMemo(() => {
-    let result = [...mockMockups];
-
-    if (options.orderId) {
-      result = result.filter(m => m.order_id === options.orderId);
-    }
-
-    if (options.status) {
-      result = result.filter(m => m.status === options.status);
-    }
-
-    return result.sort((a, b) => b.version_number - a.version_number);
-  }, [options.orderId, options.status]);
-
-  const getMockupById = useCallback((id: string): OrderMockup | undefined => {
-    return mockMockups.find(m => m.id === id);
-  }, []);
-
-  const getLatestMockup = useCallback((orderId: string): OrderMockup | undefined => {
-    const orderMockups = mockMockups
-      .filter(m => m.order_id === orderId)
-      .sort((a, b) => b.version_number - a.version_number);
-    return orderMockups[0];
-  }, []);
-
-  // Get approval summary
-  const getApprovalSummary = useCallback((orderId: string): MockupApprovalSummary | null => {
-    return getMockupApprovalSummary(orderId);
-  }, []);
-
-  // Check if mockup is approved
-  const isMockupApproved = useCallback((orderId: string): boolean => {
-    const latest = getLatestMockup(orderId);
-    return latest?.status === 'approved';
-  }, [getLatestMockup]);
-
-  return {
-    mockups,
-    loading,
-    getMockupById,
-    getLatestMockup,
-    getApprovalSummary,
-    isMockupApproved,
-  };
-}
-
-// ---------------------------------------------
-// useERPApprovalGates - Approval Gate Management
-// ---------------------------------------------
-
-interface UseERPApprovalGatesOptions {
-  orderId?: string;
-}
-
-export function useERPApprovalGates(options: UseERPApprovalGatesOptions = {}) {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Filter gates
-  const gates = useMemo(() => {
-    let result = [...mockApprovalGates];
-
-    if (options.orderId) {
-      result = result.filter(g => g.order_id === options.orderId);
-    }
-
-    return result.sort((a, b) => a.sort_order - b.sort_order);
-  }, [options.orderId]);
-
-  const getGateById = useCallback((id: string): ApprovalGate | undefined => {
-    return mockApprovalGates.find(g => g.id === id);
-  }, []);
-
-  const getGateByType = useCallback((orderId: string, gateType: string): ApprovalGate | undefined => {
-    return mockApprovalGates.find(g => g.order_id === orderId && g.gate_type === gateType);
-  }, []);
-
-  // Get full summary for order
-  const getGatesSummary = useCallback((orderId: string): OrderGatesSummary | null => {
-    return getOrderGatesSummary(orderId);
-  }, []);
-
-  // Check if all mandatory gates passed
-  const canStartProduction = useCallback((orderId: string): boolean => {
-    const summary = getGatesSummary(orderId);
-    return summary?.production_unlocked ?? false;
-  }, [getGatesSummary]);
-
-  // Get blocking gates
-  const getBlockingGates = useCallback((orderId: string): string[] => {
-    const summary = getGatesSummary(orderId);
-    return summary?.blocking_gates ?? [];
-  }, [getGatesSummary]);
-
-  // Get next gate to complete
-  const getNextPendingGate = useCallback((orderId: string): ApprovalGate | undefined => {
-    const orderGates = gates.filter(g => g.order_id === orderId);
-    return orderGates.find(g => g.status === 'pending' || g.status === 'in_progress');
-  }, [gates]);
-
-  // Get gate status color
-  const getGateStatusColor = useCallback((status: string): string => {
-    switch (status) {
-      case 'approved':
-        return '#34C759';
-      case 'in_progress':
-        return '#007AFF';
-      case 'rejected':
-        return '#FF3B30';
-      case 'skipped':
-        return '#8E8E93';
-      default:
-        return '#FF9500';
-    }
-  }, []);
-
-  // Get gate status text
-  const getGateStatusText = useCallback((status: string): string => {
-    switch (status) {
-      case 'approved':
-        return 'ผ่าน';
-      case 'in_progress':
-        return 'กำลังดำเนินการ';
-      case 'rejected':
-        return 'ไม่ผ่าน';
-      case 'skipped':
-        return 'ข้าม';
-      default:
-        return 'รอดำเนินการ';
-    }
-  }, []);
-
-  return {
-    gates,
-    loading,
-    getGateById,
-    getGateByType,
-    getGatesSummary,
-    canStartProduction,
-    getBlockingGates,
-    getNextPendingGate,
-    getGateStatusColor,
-    getGateStatusText,
-  };
-}
-
-// ---------------------------------------------
-// Combined Hook for Order Design Flow
-// ---------------------------------------------
-
-export function useERPOrderDesignFlow(orderId: string) {
-  const { designs, loading: designsLoading, getApprovalSummary: getDesignSummary } = useERPDesigns({ orderId });
-  const { mockups, loading: mockupsLoading, getApprovalSummary: getMockupSummary } = useERPMockups({ orderId });
-  const { gates, loading: gatesLoading, getGatesSummary, canStartProduction } = useERPApprovalGates({ orderId });
-
-  const loading = designsLoading || mockupsLoading || gatesLoading;
-
-  const summary = useMemo(() => {
-    const gatesSummary = getGatesSummary(orderId);
-    const designSummary = getDesignSummary(orderId);
-    const mockupSummary = getMockupSummary(orderId);
-
-    return {
-      gates: gatesSummary,
-      design: designSummary,
-      mockup: mockupSummary,
-      canStartProduction: canStartProduction(orderId),
+    const fetchDesigns = async () => {
+      try {
+        setLoading(true);
+        const data = await supabaseOrderRepository.getDesigns(orderId);
+        setDesigns(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [orderId, getGatesSummary, getDesignSummary, getMockupSummary, canStartProduction]);
+
+    if (orderId) {
+      fetchDesigns();
+    }
+  }, [orderId]);
+
+  return {
+    designs,
+    loading,
+    error,
+  };
+}
+
+// ---------------------------------------------
+// useERPMockups - Mockups for an order
+// ---------------------------------------------
+
+export function useERPMockups(orderId: string) {
+  const [mockups, setMockups] = useState<OrderMockup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMockups = async () => {
+      try {
+        setLoading(true);
+        const data = await supabaseOrderRepository.getMockups(orderId);
+        setMockups(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (orderId) {
+      fetchMockups();
+    }
+  }, [orderId]);
+
+  const approveMockup = async (mockupId: string) => {
+    try {
+      const result = await supabaseOrderRepository.approveMockup(mockupId);
+      if (result.success) {
+        // Refresh mockups
+        const data = await supabaseOrderRepository.getMockups(orderId);
+        setMockups(data);
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const rejectMockup = async (mockupId: string, feedback: string) => {
+    try {
+      const result = await supabaseOrderRepository.rejectMockup(mockupId, feedback);
+      if (result.success) {
+        // Refresh mockups
+        const data = await supabaseOrderRepository.getMockups(orderId);
+        setMockups(data);
+      }
+      return result;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  return {
+    mockups,
+    loading,
+    error,
+    approveMockup,
+    rejectMockup,
+  };
+}
+
+// ---------------------------------------------
+// useERPApprovalGates - Approval gates (combined hook)
+// ---------------------------------------------
+
+export function useERPApprovalGates(orderId: string) {
+  const { designs, loading: designsLoading, error: designsError } = useERPDesigns(orderId);
+  const { mockups, loading: mockupsLoading, error: mockupsError, approveMockup, rejectMockup } = useERPMockups(orderId);
+
+  // Note: In a full implementation, approval_gates would be a separate table
+  // For now, we derive status from designs and mockups
+  const approvalGates: ApprovalGate[] = [];
+
+  // Design approval gate
+  const latestDesign = designs[0];
+  if (latestDesign) {
+    const latestVersion = latestDesign.versions?.[0];
+    approvalGates.push({
+      id: `gate-design-${orderId}`,
+      order_id: orderId,
+      gate_type: 'design_approval',
+      status: latestVersion?.status === 'approved' ? 'approved' : 
+              latestVersion?.status === 'rejected' ? 'rejected' : 'pending',
+      approved_by: latestVersion?.approved_by,
+      approved_at: latestVersion?.approved_at,
+      notes: latestVersion?.feedback,
+      created_at: latestDesign.created_at,
+      updated_at: latestDesign.updated_at,
+    });
+  }
+
+  // Mockup approval gate
+  const latestMockup = mockups[0];
+  if (latestMockup) {
+    approvalGates.push({
+      id: `gate-mockup-${orderId}`,
+      order_id: orderId,
+      gate_type: 'mockup_approval',
+      status: latestMockup.status === 'approved' ? 'approved' :
+              latestMockup.status === 'rejected' ? 'rejected' : 'pending',
+      approved_by: latestMockup.approved_by_customer ? orderId : undefined, // Mock
+      approved_at: latestMockup.approved_at,
+      notes: latestMockup.customer_feedback,
+      created_at: latestMockup.created_at,
+      updated_at: latestMockup.updated_at,
+    });
+  }
 
   return {
     designs,
     mockups,
-    gates,
-    summary,
-    loading,
+    approvalGates,
+    loading: designsLoading || mockupsLoading,
+    error: designsError || mockupsError,
+    approveMockup,
+    rejectMockup,
   };
 }
-
