@@ -201,6 +201,119 @@ export function useERPProductionStats(filters?: ProductionJobFilters) {
 }
 
 // ---------------------------------------------
+// useERPProductionMutations - Production mutations only
+// ---------------------------------------------
+
+export function useERPProductionMutations() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const createJob = async (input: CreateProductionJobInput) => {
+    try {
+      setLoading(true);
+      const result = await supabaseProductionRepository.create(input);
+      if (result.success && result.data) {
+        return result.data;
+      }
+      throw new Error(result.message || 'Failed to create job');
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateJob = async (id: string, updates: UpdateProductionJobInput) => {
+    try {
+      setLoading(true);
+      const result = await supabaseProductionRepository.update(id, updates);
+      if (result.success && result.data) {
+        return result.data;
+      }
+      throw new Error(result.message || 'Failed to update job');
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startJob = async (jobId: string) => {
+    try {
+      setLoading(true);
+      return await supabaseProductionRepository.startJob(jobId);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completeJob = async (jobId: string) => {
+    try {
+      setLoading(true);
+      return await supabaseProductionRepository.completeJob(jobId);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logProduction = async (data: LogProductionInput) => {
+    try {
+      setLoading(true);
+      return await supabaseProductionRepository.logProduction(data);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const assignToStation = async (jobId: string, stationId: string) => {
+    try {
+      setLoading(true);
+      return await supabaseProductionRepository.assignToStation(jobId, stationId);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const assignToWorker = async (jobId: string, workerId: string) => {
+    try {
+      setLoading(true);
+      return await supabaseProductionRepository.assignToWorker(jobId, workerId);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    loading,
+    error,
+    createJob,
+    updateJob,
+    startJob,
+    completeJob,
+    logProduction,
+    assignToStation,
+    assignToWorker,
+  };
+}
+
+// ---------------------------------------------
 // useERPProductionQueue - Production queue/kanban
 // ---------------------------------------------
 
