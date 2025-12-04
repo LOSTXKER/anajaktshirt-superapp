@@ -586,16 +586,19 @@ export const mockSalesChannels = [
 // ---------------------------------------------
 
 export const mockWorkTypes: WorkType[] = [
+  // === PRINTING (งานพิมพ์) ===
   {
     id: 'wt-001',
     code: 'dtg',
     name: 'DTG Printing',
     name_th: 'พิมพ์ DTG',
     category_code: 'printing',
-    base_price: 0,
+    base_price: 35,
     requires_design: true,
     requires_material: false,
     estimated_minutes_per_unit: 2,
+    can_outsource: true,
+    in_house_capable: false,
     is_active: true,
     sort_order: 1,
     created_at: '2024-01-01T00:00:00Z',
@@ -606,10 +609,12 @@ export const mockWorkTypes: WorkType[] = [
     name: 'DTF Printing',
     name_th: 'พิมพ์ DTF',
     category_code: 'printing',
-    base_price: 0,
+    base_price: 25,
     requires_design: true,
     requires_material: false,
     estimated_minutes_per_unit: 1.5,
+    can_outsource: true,
+    in_house_capable: true, // ทำได้ในโรงงาน
     is_active: true,
     sort_order: 2,
     created_at: '2024-01-01T00:00:00Z',
@@ -618,43 +623,316 @@ export const mockWorkTypes: WorkType[] = [
     id: 'wt-003',
     code: 'silkscreen',
     name: 'Silkscreen',
-    name_th: 'สกรีน',
+    name_th: 'สกรีน Silkscreen',
     category_code: 'printing',
-    base_price: 0,
+    base_price: 15,
     requires_design: true,
     requires_material: false,
     estimated_minutes_per_unit: 0.5,
+    can_outsource: true,
+    in_house_capable: false,
     is_active: true,
     sort_order: 3,
     created_at: '2024-01-01T00:00:00Z',
   },
   {
     id: 'wt-004',
-    code: 'embroidery',
-    name: 'Embroidery',
-    name_th: 'ปัก',
-    category_code: 'embroidery',
-    base_price: 0,
+    code: 'sublimation',
+    name: 'Sublimation',
+    name_th: 'ซับลิเมชั่น',
+    category_code: 'printing',
+    base_price: 40,
     requires_design: true,
     requires_material: false,
-    estimated_minutes_per_unit: 5,
+    estimated_minutes_per_unit: 3,
+    can_outsource: true,
+    in_house_capable: false,
     is_active: true,
     sort_order: 4,
     created_at: '2024-01-01T00:00:00Z',
   },
   {
     id: 'wt-005',
+    code: 'vinyl',
+    name: 'Vinyl/Heat Transfer',
+    name_th: 'ไวนิล/รีดร้อน',
+    category_code: 'printing',
+    base_price: 30,
+    requires_design: true,
+    requires_material: false,
+    estimated_minutes_per_unit: 2,
+    can_outsource: true,
+    in_house_capable: false,
+    is_active: true,
+    sort_order: 5,
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  
+  // === EMBROIDERY (งานปัก) ===
+  {
+    id: 'wt-010',
+    code: 'embroidery',
+    name: 'Embroidery',
+    name_th: 'ปัก',
+    category_code: 'embroidery',
+    base_price: 50,
+    requires_design: true,
+    requires_material: false,
+    estimated_minutes_per_unit: 5,
+    can_outsource: true,
+    in_house_capable: false,
+    is_active: true,
+    sort_order: 10,
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'wt-011',
+    code: 'embroidery_badge',
+    name: 'Embroidery Badge',
+    name_th: 'ปักตัวรีด',
+    category_code: 'embroidery',
+    base_price: 80,
+    requires_design: true,
+    requires_material: true,
+    estimated_minutes_per_unit: 10,
+    can_outsource: true,
+    in_house_capable: false,
+    is_active: true,
+    sort_order: 11,
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  
+  // === GARMENT (งานตัดเย็บ) ===
+  {
+    id: 'wt-020',
+    code: 'cutting',
+    name: 'Cutting',
+    name_th: 'ตัดผ้า',
+    category_code: 'garment',
+    base_price: 20,
+    requires_design: false,
+    requires_material: true,
+    estimated_minutes_per_unit: 5,
+    can_outsource: true,
+    in_house_capable: false,
+    is_active: true,
+    sort_order: 20,
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'wt-021',
     code: 'sewing',
     name: 'Sewing',
     name_th: 'ตัดเย็บ',
     category_code: 'garment',
-    base_price: 0,
+    base_price: 100,
     requires_design: false,
     requires_material: true,
     estimated_minutes_per_unit: 30,
+    can_outsource: true,
+    in_house_capable: false,
     is_active: true,
-    sort_order: 5,
+    sort_order: 21,
     created_at: '2024-01-01T00:00:00Z',
+  },
+  
+  // === LABELING (งานป้าย) ===
+  {
+    id: 'wt-030',
+    code: 'woven_label',
+    name: 'Woven Label',
+    name_th: 'ป้ายทอ',
+    category_code: 'labeling',
+    base_price: 5,
+    requires_design: true,
+    requires_material: true,
+    estimated_minutes_per_unit: 1,
+    can_outsource: true,
+    in_house_capable: false,
+    is_active: true,
+    sort_order: 30,
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'wt-031',
+    code: 'printed_label',
+    name: 'Printed Label',
+    name_th: 'ป้ายพิมพ์',
+    category_code: 'labeling',
+    base_price: 3,
+    requires_design: true,
+    requires_material: true,
+    estimated_minutes_per_unit: 0.5,
+    can_outsource: true,
+    in_house_capable: false,
+    is_active: true,
+    sort_order: 31,
+    created_at: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'wt-032',
+    code: 'leather_tag',
+    name: 'Leather Tag',
+    name_th: 'ป้ายหนัง',
+    category_code: 'labeling',
+    base_price: 15,
+    requires_design: true,
+    requires_material: true,
+    estimated_minutes_per_unit: 2,
+    can_outsource: true,
+    in_house_capable: false,
+    is_active: true,
+    sort_order: 32,
+    created_at: '2024-01-01T00:00:00Z',
+  },
+];
+
+// ---------------------------------------------
+// Work Dependencies (ลำดับการทำงาน)
+// ---------------------------------------------
+
+export interface WorkDependency {
+  work_type_code: string;
+  depends_on: string[]; // ต้องทำหลังจาก work_type_code เหล่านี้
+  can_parallel_with: string[]; // ทำพร้อมกันได้
+  order_types: string[]; // ใช้กับ order type ไหน (empty = all)
+}
+
+export const mockWorkDependencies: WorkDependency[] = [
+  // Cutting ต้องมี fabric พร้อมก่อน
+  { 
+    work_type_code: 'cutting', 
+    depends_on: [], 
+    can_parallel_with: [],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  // Sewing ต้องทำหลัง Cutting
+  { 
+    work_type_code: 'sewing', 
+    depends_on: ['cutting'], 
+    can_parallel_with: [],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  // Sublimation ทำก่อน Sewing (พิมพ์บนผ้าก่อนเย็บ)
+  { 
+    work_type_code: 'sublimation', 
+    depends_on: ['cutting'], 
+    can_parallel_with: [],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  // งานพิมพ์ทั่วไปทำหลัง Sewing (ถ้าเป็น custom) หรือทำเลย (ถ้าเป็น ready-made)
+  { 
+    work_type_code: 'dtf', 
+    depends_on: ['sewing'], 
+    can_parallel_with: ['embroidery', 'dtg', 'silkscreen', 'vinyl'],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  { 
+    work_type_code: 'dtf', 
+    depends_on: [], 
+    can_parallel_with: ['embroidery', 'dtg', 'silkscreen', 'vinyl'],
+    order_types: ['ready_made', 'print_only'],
+  },
+  { 
+    work_type_code: 'dtg', 
+    depends_on: ['sewing'], 
+    can_parallel_with: ['embroidery', 'dtf', 'silkscreen', 'vinyl'],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  { 
+    work_type_code: 'dtg', 
+    depends_on: [], 
+    can_parallel_with: ['embroidery', 'dtf', 'silkscreen', 'vinyl'],
+    order_types: ['ready_made', 'print_only'],
+  },
+  { 
+    work_type_code: 'silkscreen', 
+    depends_on: ['sewing'], 
+    can_parallel_with: ['embroidery', 'dtf', 'dtg', 'vinyl'],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  { 
+    work_type_code: 'silkscreen', 
+    depends_on: [], 
+    can_parallel_with: ['embroidery', 'dtf', 'dtg', 'vinyl'],
+    order_types: ['ready_made', 'print_only'],
+  },
+  { 
+    work_type_code: 'vinyl', 
+    depends_on: ['sewing'], 
+    can_parallel_with: ['embroidery', 'dtf', 'dtg', 'silkscreen'],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  { 
+    work_type_code: 'vinyl', 
+    depends_on: [], 
+    can_parallel_with: ['embroidery', 'dtf', 'dtg', 'silkscreen'],
+    order_types: ['ready_made', 'print_only'],
+  },
+  // งานปักทำหลัง Sewing (ถ้าเป็น custom) หรือทำเลย
+  { 
+    work_type_code: 'embroidery', 
+    depends_on: ['sewing'], 
+    can_parallel_with: ['dtf', 'dtg', 'silkscreen', 'vinyl'],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  { 
+    work_type_code: 'embroidery', 
+    depends_on: [], 
+    can_parallel_with: ['dtf', 'dtg', 'silkscreen', 'vinyl'],
+    order_types: ['ready_made', 'print_only'],
+  },
+  // งานป้ายทำหลัง Sewing
+  { 
+    work_type_code: 'woven_label', 
+    depends_on: ['sewing'], 
+    can_parallel_with: ['dtf', 'dtg', 'embroidery'],
+    order_types: ['custom_sewing', 'full_custom'],
+  },
+  { 
+    work_type_code: 'woven_label', 
+    depends_on: [], 
+    can_parallel_with: ['dtf', 'dtg', 'embroidery'],
+    order_types: ['ready_made', 'print_only'],
+  },
+];
+
+// ---------------------------------------------
+// Required Work Types by Order Type
+// (งานที่ต้องมีตาม Production Mode)
+// ---------------------------------------------
+
+export interface OrderTypeRequiredWork {
+  order_type_code: string;
+  required_work_types: string[]; // งานที่ต้องมีอัตโนมัติ
+  suggested_work_types: string[]; // งานที่แนะนำ
+  excluded_work_types: string[]; // งานที่ไม่สามารถเลือกได้
+}
+
+export const mockOrderTypeRequiredWorks: OrderTypeRequiredWork[] = [
+  {
+    order_type_code: 'ready_made',
+    required_work_types: [], // ไม่มีงานบังคับ
+    suggested_work_types: ['dtf', 'embroidery'], // แนะนำ DTF, ปัก
+    excluded_work_types: ['cutting', 'sewing'], // ไม่มีงานตัดเย็บ
+  },
+  {
+    order_type_code: 'custom_sewing',
+    required_work_types: ['cutting', 'sewing'], // บังคับตัดเย็บ
+    suggested_work_types: ['dtf', 'embroidery', 'woven_label'],
+    excluded_work_types: [],
+  },
+  {
+    order_type_code: 'full_custom',
+    required_work_types: ['cutting', 'sewing'], // บังคับตัดเย็บ
+    suggested_work_types: ['dtf', 'embroidery', 'woven_label'],
+    excluded_work_types: [],
+  },
+  {
+    order_type_code: 'print_only',
+    required_work_types: [], // ไม่มีงานบังคับ
+    suggested_work_types: ['dtf', 'dtg', 'embroidery'],
+    excluded_work_types: ['cutting', 'sewing'], // ไม่มีงานตัดเย็บ
   },
 ];
 

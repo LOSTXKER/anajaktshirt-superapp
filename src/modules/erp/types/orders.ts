@@ -62,8 +62,28 @@ export interface WorkType extends BaseEntity {
   requires_design: boolean;
   requires_material: boolean;
   estimated_minutes_per_unit: number;
+  can_outsource?: boolean;
+  in_house_capable?: boolean;
   is_active: boolean;
   sort_order: number;
+}
+
+// ---------------------------------------------
+// Work Dependencies
+// ---------------------------------------------
+
+export interface WorkDependency {
+  work_type_code: string;
+  depends_on: string[]; // ต้องทำหลังจาก work_type_code เหล่านี้
+  can_parallel_with: string[]; // ทำพร้อมกันได้
+  order_types: string[]; // ใช้กับ order type ไหน (empty = all)
+}
+
+export interface OrderTypeRequiredWork {
+  order_type_code: string;
+  required_work_types: string[]; // งานที่ต้องมีอัตโนมัติ
+  suggested_work_types: string[]; // งานที่แนะนำ
+  excluded_work_types: string[]; // งานที่ไม่สามารถเลือกได้
 }
 
 // ---------------------------------------------

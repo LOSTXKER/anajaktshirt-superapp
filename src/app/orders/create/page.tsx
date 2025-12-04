@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -21,6 +21,13 @@ import {
   Clock,
   AlertTriangle,
   Sparkles,
+  Printer,
+  Scissors,
+  Tag,
+  Box,
+  Info,
+  ChevronRight,
+  Lock,
 } from 'lucide-react';
 import { Button, Card, Input, Modal, useToast } from '@/modules/shared/ui';
 import {
@@ -30,8 +37,9 @@ import {
   useERPAddonTypes,
   useERPPrintConfig,
   useERPOrderConfig,
+  useERPWorkDependencies,
 } from '@/modules/erp';
-import type { Customer, Product, OrderType, PriorityLevel } from '@/modules/erp';
+import type { Customer, Product, OrderType, PriorityLevel, WorkType } from '@/modules/erp';
 
 // ---------------------------------------------
 // Types
@@ -46,6 +54,9 @@ interface WorkItemForm {
   position_code: string;
   print_size_code: string;
   products: ProductItemForm[];
+  is_required?: boolean; // งานบังคับตาม Order Type
+  design_ready?: boolean; // ลูกค้าส่งไฟล์พร้อมผลิต
+  design_note?: string; // หมายเหตุการออกแบบ
 }
 
 interface ProductItemForm {
@@ -143,13 +154,64 @@ export default function CreateOrderPage() {
 
   // Hooks
   const { orderTypes, priorityLevels, salesChannels } = useERPOrderConfig();
-  const { workTypes, getWorkTypeByCode } = useERPWorkTypes();
+  const { workTypes, getWorkTypeByCode, workTypesByCategory } = useERPWorkTypes();
   const { addonTypes, getAddonTypeByCode } = useERPAddonTypes();
   const { positions, sizes, getPositionByCode, getSizeByCode } = useERPPrintConfig();
+  
+  // Work Dependencies Hook
+  const {
+    availableWorkTypes,
+    requiredWorkTypes,
+    suggestedWorkTypes,
+    workCategories,
+    getDependenciesFor,
+    canAddWorkType,
+    getMissingDependencies,
+    buildWorkflowOrder,
+  } = useERPWorkDependencies(formData.order_type_code);
 
   // Selected order type
   const selectedOrderType = orderTypes.find(ot => ot.code === formData.order_type_code);
   const selectedPriority = priorityLevels.find(p => p.code === formData.priority_code);
+
+  // Current work item codes (for dependency checking)
+  const currentWorkItemCodes = useMemo(() => {
+    return formData.work_items.map(wi => wi.work_type_code);
+  }, [formData.work_items]);
+
+  // Build workflow order for display
+  const workflowOrder = useMemo(() => {
+    return buildWorkflowOrder(currentWorkItemCodes);
+  }, [currentWorkItemCodes, buildWorkflowOrder]);
+
+  // Auto-add required work types when order type changes
+  useEffect(() => {
+    if (requiredWorkTypes.length > 0 && formData.order_type_code) {
+      const existingCodes = formData.work_items.map(wi => wi.work_type_code);
+      const missingRequired = requiredWorkTypes.filter(
+        wt => !existingCodes.includes(wt.code)
+      );
+      
+      if (missingRequired.length > 0) {
+        const newItems = missingRequired.map((wt, index) => ({
+          id: `wi-req-${Date.now()}-${index}`,
+          work_type_code: wt.code,
+          description: '',
+          quantity: 1,
+          unit_price: wt.base_price,
+          position_code: '',
+          print_size_code: '',
+          products: [],
+          is_required: true, // Mark as required
+        }));
+        
+        setFormData(prev => ({
+          ...prev,
+          work_items: [...newItems, ...prev.work_items.filter(wi => !missingRequired.some(r => r.code === wi.work_type_code))],
+        }));
+      }
+    }
+  }, [requiredWorkTypes, formData.order_type_code]);
 
   // Calculate totals
   const calculations = useMemo(() => {
@@ -639,25 +701,190 @@ export default function CreateOrderPage() {
           </div>
         )}
 
-        {/* Step 2: Products & Work Items */}
+        {/* Step 2: Products & Work Items with Dependencies */}
         {currentStep === 2 && (
           <div className="space-y-6">
+            {/* Workflow Diagram (if has items) */}
+            {workflowOrder.length > 0 && (
+              <Card className="p-4 apple-card bg-gradient-to-r from-[#007AFF]/5 to-[#5856D6]/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Info className="w-4 h-4 text-[#007AFF]" />
+                  <span className="text-sm font-medium text-[#1D1D1F]">ลำดับการผลิต</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {workflowOrder.map((step, index) => {
+                    const wt = getWorkTypeByCode(step.code);
+                    return (
+                      <div key={step.code} className="flex items-center gap-2">
+                        <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                          step.parallel.length > 0
+                            ? 'bg-[#5856D6]/10 text-[#5856D6] border border-[#5856D6]/20'
+                            : 'bg-[#007AFF]/10 text-[#007AFF]'
+                        }`}>
+                          <span className="text-xs text-[#86868B] mr-1">{step.order}.</span>
+                          {wt?.name_th || step.code}
+                          {step.parallel.length > 0 && (
+                            <span className="text-xs ml-1 opacity-70">
+                              (พร้อม {step.parallel.map(p => getWorkTypeByCode(p)?.name_th).join(', ')})
+                            </span>
+                          )}
+                        </div>
+                        {index < workflowOrder.length - 1 && (
+                          <ChevronRight className="w-4 h-4 text-[#86868B]" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Required Work Types (if any) */}
+            {requiredWorkTypes.length > 0 && (
+              <Card className="p-4 apple-card border-[#FF9500]/20 bg-[#FF9500]/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Lock className="w-4 h-4 text-[#FF9500]" />
+                  <span className="text-sm font-medium text-[#1D1D1F]">
+                    งานบังคับสำหรับ "{selectedOrderType?.name_th}"
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {requiredWorkTypes.map(wt => {
+                    const isAdded = currentWorkItemCodes.includes(wt.code);
+                    return (
+                      <span
+                        key={wt.code}
+                        className={`px-3 py-1.5 rounded-lg text-sm ${
+                          isAdded
+                            ? 'bg-[#34C759]/10 text-[#34C759]'
+                            : 'bg-[#FF9500]/10 text-[#FF9500]'
+                        }`}
+                      >
+                        {isAdded ? '✓' : '○'} {wt.name_th}
+                      </span>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Add Work by Category */}
             <Card className="p-6 apple-card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-[#1D1D1F]">งานพิมพ์/สกรีน</h2>
-                <Button onClick={handleAddWorkItem} className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  เพิ่มงาน
-                </Button>
+                <div>
+                  <h2 className="text-lg font-semibold text-[#1D1D1F]">เพิ่มงาน</h2>
+                  <p className="text-sm text-[#86868B]">เลือกงานที่ต้องการ (สามารถเลือกได้หลายงาน)</p>
+                </div>
+              </div>
+
+              {/* Category Tabs */}
+              <div className="space-y-4">
+                {workCategories.map(category => {
+                  const categoryWorkTypes = availableWorkTypes.filter(
+                    wt => wt.category_code === category.code
+                  );
+                  
+                  if (categoryWorkTypes.length === 0) return null;
+
+                  const CategoryIcon = 
+                    category.code === 'printing' ? Printer :
+                    category.code === 'embroidery' ? Palette :
+                    category.code === 'garment' ? Scissors :
+                    category.code === 'labeling' ? Tag :
+                    category.code === 'packaging' ? Box : Package;
+
+                  return (
+                    <div key={category.code} className="border border-[#E8E8ED] rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div 
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: `${category.color}15` }}
+                        >
+                          <CategoryIcon className="w-4 h-4" style={{ color: category.color }} />
+                        </div>
+                        <span className="font-medium text-[#1D1D1F]">{category.name_th}</span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {categoryWorkTypes.map(wt => {
+                          const isAdded = currentWorkItemCodes.includes(wt.code);
+                          const isRequired = requiredWorkTypes.some(r => r.code === wt.code);
+                          const canAdd = canAddWorkType(wt.code, currentWorkItemCodes);
+                          const missingDeps = getMissingDependencies(wt.code, currentWorkItemCodes);
+                          const isSuggested = suggestedWorkTypes.some(s => s.code === wt.code);
+                          
+                          return (
+                            <button
+                              key={wt.code}
+                              onClick={() => {
+                                if (isAdded) {
+                                  // Remove if not required
+                                  if (!isRequired) {
+                                    handleRemoveWorkItem(
+                                      formData.work_items.find(wi => wi.work_type_code === wt.code)?.id || ''
+                                    );
+                                  }
+                                } else if (canAdd) {
+                                  // Add work item
+                                  const newItem: WorkItemForm = {
+                                    id: `wi-${Date.now()}`,
+                                    work_type_code: wt.code,
+                                    description: '',
+                                    quantity: 1,
+                                    unit_price: wt.base_price,
+                                    position_code: wt.requires_design ? 'front_chest_center' : '',
+                                    print_size_code: wt.requires_design ? 'a4' : '',
+                                    products: [],
+                                    is_required: isRequired,
+                                  };
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    work_items: [...prev.work_items, newItem],
+                                  }));
+                                }
+                              }}
+                              disabled={isRequired && isAdded}
+                              className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                                isAdded
+                                  ? 'bg-[#007AFF] text-white'
+                                  : canAdd
+                                  ? 'bg-[#F5F5F7] text-[#1D1D1F] hover:bg-[#007AFF]/10'
+                                  : 'bg-[#F5F5F7] text-[#86868B] opacity-50 cursor-not-allowed'
+                              } ${isRequired ? 'ring-2 ring-[#FF9500]/50' : ''}`}
+                              title={!canAdd ? `ต้องเพิ่ม ${missingDeps.map(d => getWorkTypeByCode(d)?.name_th).join(', ')} ก่อน` : ''}
+                            >
+                              {isAdded && <Check className="w-3 h-3 inline mr-1" />}
+                              {wt.name_th}
+                              {isRequired && <Lock className="w-3 h-3 inline ml-1 opacity-70" />}
+                              {isSuggested && !isAdded && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#34C759] rounded-full" />
+                              )}
+                              {wt.in_house_capable && (
+                                <span className="ml-1 text-xs opacity-70">🏠</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Selected Work Items */}
+            <Card className="p-6 apple-card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-[#1D1D1F]">
+                  งานที่เลือก ({formData.work_items.length})
+                </h2>
               </div>
 
               {formData.work_items.length === 0 ? (
                 <div className="p-8 border-2 border-dashed border-[#E8E8ED] rounded-2xl text-center">
                   <Package className="w-12 h-12 text-[#86868B] mx-auto mb-3" />
                   <p className="text-[#86868B]">ยังไม่มีรายการงาน</p>
-                  <Button onClick={handleAddWorkItem} variant="secondary" className="mt-4">
-                    เพิ่มงานพิมพ์/สกรีน
-                  </Button>
+                  <p className="text-xs text-[#86868B] mt-1">เลือกงานจากหมวดหมู่ด้านบน</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -666,9 +893,10 @@ export default function CreateOrderPage() {
                       key={item.id}
                       item={item}
                       index={index}
-                      workTypes={workTypes}
+                      workTypes={availableWorkTypes}
                       positions={positions}
                       sizes={sizes}
+                      isRequired={item.is_required || false}
                       onUpdate={(field, value) => handleUpdateWorkItem(item.id, field, value)}
                       onRemove={() => handleRemoveWorkItem(item.id)}
                       onAddProduct={() => {
@@ -679,9 +907,10 @@ export default function CreateOrderPage() {
                         handleUpdateProductQuantity(item.id, productId, qty)
                       }
                       onRemoveProduct={(productId) => handleRemoveProduct(item.id, productId)}
+                      showProducts={selectedOrderType?.requires_products || false}
                     />
                   ))}
-          </div>
+                </div>
               )}
             </Card>
           </div>
@@ -947,9 +1176,11 @@ export default function CreateOrderPage() {
 interface WorkItemCardProps {
   item: WorkItemForm;
   index: number;
-  workTypes: any[];
+  workTypes: WorkType[];
   positions: any[];
   sizes: any[];
+  isRequired?: boolean;
+  showProducts?: boolean;
   onUpdate: (field: string, value: any) => void;
   onRemove: () => void;
   onAddProduct: () => void;
@@ -963,6 +1194,8 @@ function WorkItemCard({
   workTypes,
   positions,
   sizes,
+  isRequired = false,
+  showProducts = true,
   onUpdate,
   onRemove,
   onAddProduct,
@@ -970,108 +1203,168 @@ function WorkItemCard({
   onRemoveProduct,
 }: WorkItemCardProps) {
   const workType = workTypes.find(wt => wt.code === item.work_type_code);
+  const requiresDesign = workType?.requires_design || false;
+  const requiresMaterial = workType?.requires_material || false;
   
   return (
-    <div className="p-4 bg-[#F5F5F7] rounded-2xl">
+    <div className={`p-4 rounded-2xl ${
+      isRequired ? 'bg-[#FF9500]/5 border border-[#FF9500]/20' : 'bg-[#F5F5F7]'
+    }`}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-[#1D1D1F]">งานที่ {index + 1}</h3>
-        <button onClick={onRemove} className="p-2 text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-lg">
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-[#1D1D1F]">
+            {workType?.name_th || `งานที่ ${index + 1}`}
+          </h3>
+          {isRequired && (
+            <span className="px-2 py-0.5 text-xs bg-[#FF9500]/20 text-[#FF9500] rounded-full flex items-center gap-1">
+              <Lock className="w-3 h-3" /> บังคับ
+            </span>
+          )}
+          {workType?.in_house_capable && (
+            <span className="px-2 py-0.5 text-xs bg-[#34C759]/20 text-[#34C759] rounded-full">
+              🏠 ทำเองได้
+            </span>
+          )}
+          {workType?.can_outsource && !workType?.in_house_capable && (
+            <span className="px-2 py-0.5 text-xs bg-[#5856D6]/20 text-[#5856D6] rounded-full">
+              📤 Outsource
+            </span>
+          )}
+        </div>
+        {!isRequired && (
+          <button onClick={onRemove} className="p-2 text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-lg">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      <div className="grid md:grid-cols-4 gap-3 mb-4">
-                  <div>
-          <label className="block text-xs font-medium text-[#86868B] mb-1">ประเภทงาน</label>
-                    <select
-                      value={item.work_type_code}
-            onChange={(e) => onUpdate('work_type_code', e.target.value)}
-            className="w-full px-3 py-2 bg-white border-0 rounded-xl text-sm"
-                    >
-            {workTypes.map(wt => (
-                        <option key={wt.code} value={wt.code}>{wt.name_th}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-          <label className="block text-xs font-medium text-[#86868B] mb-1">ตำแหน่ง</label>
-                    <select
-                      value={item.position_code}
-            onChange={(e) => onUpdate('position_code', e.target.value)}
-            className="w-full px-3 py-2 bg-white border-0 rounded-xl text-sm"
-                    >
-            {positions.map(pos => (
-                        <option key={pos.code} value={pos.code}>{pos.name_th}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-          <label className="block text-xs font-medium text-[#86868B] mb-1">ขนาด</label>
-                    <select
-                      value={item.print_size_code}
-            onChange={(e) => onUpdate('print_size_code', e.target.value)}
-            className="w-full px-3 py-2 bg-white border-0 rounded-xl text-sm"
-                    >
-            {sizes.map(size => (
-              <option key={size.code} value={size.code}>{size.name_th}</option>
-                      ))}
-                    </select>
-                  </div>
+      {/* Design requirement section */}
+      {requiresDesign && (
+        <div className="mb-4 p-3 bg-white rounded-xl">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-[#1D1D1F]">🎨 การออกแบบ</span>
+          </div>
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={() => onUpdate('design_ready', true)}
+              className={`flex-1 p-2 rounded-lg text-sm ${
+                item.design_ready === true
+                  ? 'bg-[#34C759]/10 text-[#34C759] border border-[#34C759]/30'
+                  : 'bg-[#F5F5F7] text-[#86868B]'
+              }`}
+            >
+              ลูกค้าส่งไฟล์พร้อมผลิต
+            </button>
+            <button
+              onClick={() => onUpdate('design_ready', false)}
+              className={`flex-1 p-2 rounded-lg text-sm ${
+                item.design_ready === false
+                  ? 'bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/30'
+                  : 'bg-[#F5F5F7] text-[#86868B]'
+              }`}
+            >
+              ต้องออกแบบก่อน
+            </button>
+          </div>
+          <Input
+            placeholder="หมายเหตุการออกแบบ (เช่น โลโก้ตามไฟล์, สีตามเสื้อ)"
+            value={item.design_note || ''}
+            onChange={(e) => onUpdate('design_note', e.target.value)}
+            className="bg-[#F5F5F7] border-0 text-sm"
+          />
+        </div>
+      )}
+
+      <div className={`grid gap-3 mb-4 ${requiresDesign ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+        {/* Position (only for design work) */}
+        {requiresDesign && (
+          <div>
+            <label className="block text-xs font-medium text-[#86868B] mb-1">ตำแหน่ง</label>
+            <select
+              value={item.position_code}
+              onChange={(e) => onUpdate('position_code', e.target.value)}
+              className="w-full px-3 py-2 bg-white border-0 rounded-xl text-sm"
+            >
+              <option value="">-- เลือกตำแหน่ง --</option>
+              {positions.map(pos => (
+                <option key={pos.code} value={pos.code}>{pos.name_th}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {/* Size (only for design work) */}
+        {requiresDesign && (
+          <div>
+            <label className="block text-xs font-medium text-[#86868B] mb-1">ขนาด</label>
+            <select
+              value={item.print_size_code}
+              onChange={(e) => onUpdate('print_size_code', e.target.value)}
+              className="w-full px-3 py-2 bg-white border-0 rounded-xl text-sm"
+            >
+              <option value="">-- เลือกขนาด --</option>
+              {sizes.map(size => (
+                <option key={size.code} value={size.code}>{size.name_th}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="block text-xs font-medium text-[#86868B] mb-1">ราคา/ชิ้น</label>
           <Input
             type="number"
-                      value={item.unit_price}
+            value={item.unit_price}
             onChange={(e) => onUpdate('unit_price', parseFloat(e.target.value) || 0)}
             className="bg-white border-0"
             min={0}
-                    />
-                  </div>
-                </div>
+          />
+        </div>
+      </div>
 
-      {/* Products in this work item */}
-      <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[#86868B]">สินค้า</span>
-          <Button size="sm" variant="secondary" onClick={onAddProduct} className="gap-1">
-            <Plus className="w-3 h-3" />
-            เพิ่ม
-                    </Button>
-                  </div>
-                  
-                  {item.products.length === 0 ? (
-          <p className="text-sm text-[#86868B] italic">ยังไม่มีสินค้า</p>
-                  ) : (
-                    <div className="space-y-2">
-            {item.products.map(prod => (
-              <div key={prod.id} className="flex items-center justify-between p-3 bg-white rounded-xl">
-                <div>
-                  <div className="text-sm font-medium">{prod.product.model}</div>
-                  <div className="text-xs text-[#86868B]">
-                    {prod.product.color_th} / {prod.product.size} • ฿{prod.product.price}
-                  </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={prod.quantity}
-                    onChange={(e) => onUpdateProductQuantity(prod.id, parseInt(e.target.value) || 1)}
-                    className="w-16 text-center bg-[#F5F5F7] border-0"
-                              min={1}
-                  />
-                  <button
-                    onClick={() => onRemoveProduct(prod.id)}
-                    className="p-1.5 text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-lg"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                          </div>
-                        </div>
-                      ))}
+      {/* Products in this work item (only if showProducts) */}
+      {showProducts && (
+        <div className="mt-4 pt-4 border-t border-[#E8E8ED]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-[#86868B]">สินค้าที่ใช้งาน</span>
+            <Button size="sm" variant="secondary" onClick={onAddProduct} className="gap-1">
+              <Plus className="w-3 h-3" />
+              เพิ่มสินค้า
+            </Button>
+          </div>
+          
+          {item.products.length === 0 ? (
+            <p className="text-sm text-[#86868B] italic">ยังไม่ได้เลือกสินค้า</p>
+          ) : (
+            <div className="space-y-2">
+              {item.products.map(prod => (
+                <div key={prod.id} className="flex items-center justify-between p-3 bg-white rounded-xl">
+                  <div>
+                    <div className="text-sm font-medium">{prod.product.model}</div>
+                    <div className="text-xs text-[#86868B]">
+                      {prod.product.color_th} / {prod.product.size} • ฿{prod.product.price}
                     </div>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={prod.quantity}
+                      onChange={(e) => onUpdateProductQuantity(prod.id, parseInt(e.target.value) || 1)}
+                      className="w-16 text-center bg-[#F5F5F7] border-0"
+                      min={1}
+                    />
+                    <button
+                      onClick={() => onRemoveProduct(prod.id)}
+                      className="p-1.5 text-[#FF3B30] hover:bg-[#FF3B30]/10 rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
