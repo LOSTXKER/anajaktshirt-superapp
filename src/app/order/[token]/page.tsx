@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Modal } from '@/modules/shared/ui';
+import { Button, Modal, useToast } from '@/modules/shared/ui';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
@@ -41,6 +41,7 @@ const STATUS_FLOW: OrderStatus[] = [
 export default function CustomerOrderPage() {
   const params = useParams();
   const token = params.token as string;
+  const { warning } = useToast();
   
   const { order, loading, error, refetch } = useOrderByToken(token);
   const { approveMockup, rejectMockup, loading: mutationLoading } = useOrderMutations();
@@ -139,7 +140,7 @@ export default function CustomerOrderPage() {
 
   const handleRejectMockup = async () => {
     if (!selectedMockup || !mockupFeedback.trim()) {
-      alert('กรุณาระบุเหตุผลที่ต้องการแก้ไข');
+      warning('กรุณาระบุเหตุผลที่ต้องการแก้ไข', 'โปรดกรอกรายละเอียดที่ต้องการแก้ไข');
       return;
     }
     const result = await rejectMockup(selectedMockup.id, mockupFeedback);

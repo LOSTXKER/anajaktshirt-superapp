@@ -46,6 +46,11 @@ export function useToast() {
 // Toast Provider
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmState, setConfirmState] = useState<ConfirmState>({
+    isOpen: false,
+    title: '',
+    resolve: null,
+  });
 
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -82,10 +87,47 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     addToast({ type: 'info', title, description });
   }, [addToast]);
 
+  // Confirm dialog function (replacement for browser confirm)
+  const confirm = useCallback((config: ConfirmConfig): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmState({
+        isOpen: true,
+        ...config,
+        resolve,
+      });
+    });
+  }, []);
+
+  const handleConfirmClose = useCallback(() => {
+    if (confirmState.resolve) {
+      confirmState.resolve(false);
+    }
+    setConfirmState(prev => ({ ...prev, isOpen: false, resolve: null }));
+  }, [confirmState.resolve]);
+
+  const handleConfirmOk = useCallback(() => {
+    if (confirmState.resolve) {
+      confirmState.resolve(true);
+    }
+    setConfirmState(prev => ({ ...prev, isOpen: false, resolve: null }));
+  }, [confirmState.resolve]);
+
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast, success, error, warning, info }}>
-      {children}
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <ConfirmContext.Provider value={{ confirm }}>
+        {children}
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+        <ConfirmDialog
+          isOpen={confirmState.isOpen}
+          onClose={handleConfirmClose}
+          onConfirm={handleConfirmOk}
+          title={confirmState.title}
+          description={confirmState.description}
+          confirmText={confirmState.confirmText}
+          cancelText={confirmState.cancelText}
+          type={confirmState.type}
+        />
+      </ConfirmContext.Provider>
     </ToastContext.Provider>
   );
 }
@@ -365,6 +407,34 @@ export function ConfirmDialog({
       )}
     </AnimatePresence>
   );
+}
+
+// =============================================
+// useConfirm Hook - Replacement for browser confirm()
+// =============================================
+interface ConfirmConfig {
+  title: string;
+  description?: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'default' | 'danger';
+}
+
+interface ConfirmState extends ConfirmConfig {
+  isOpen: boolean;
+  resolve: ((value: boolean) => void) | null;
+}
+
+const ConfirmContext = createContext<{
+  confirm: (config: ConfirmConfig) => Promise<boolean>;
+} | null>(null);
+
+export function useConfirm() {
+  const context = useContext(ConfirmContext);
+  if (!context) {
+    throw new Error('useConfirm must be used within a ToastProvider');
+  }
+  return context.confirm;
 }
 
 // Alert Dialog (replacement for browser alert)

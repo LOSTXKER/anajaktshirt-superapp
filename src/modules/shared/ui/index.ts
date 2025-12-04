@@ -36,9 +36,9 @@ export { PageHeader, PageContainer, Section } from './PageHeader';
 // Navigation
 export { Sidebar } from './Sidebar';
 
-// Toast
-export { ToastProvider, useToast, ConfirmDialog } from './Toast';
-export type { ConfirmDialogProps } from './Toast';
+// Toast & Dialogs
+export { ToastProvider, useToast, useConfirm, ConfirmDialog, AlertDialog, SimpleToast } from './Toast';
+export type { ConfirmDialogProps, AlertDialogProps, SimpleToastProps, Toast, ToastType } from './Toast';
 
 // File Upload
 export { FileUpload, ImageUpload } from './FileUpload';
