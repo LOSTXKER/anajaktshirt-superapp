@@ -69,9 +69,17 @@ CREATE TABLE IF NOT EXISTS order_designs (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add work_item_id column if not exists
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'order_designs' AND column_name = 'work_item_id') THEN
+    ALTER TABLE order_designs ADD COLUMN work_item_id UUID;
+  END IF;
+END $$;
+
 -- Index for order_designs
 CREATE INDEX IF NOT EXISTS idx_order_designs_order_id ON order_designs(order_id);
-CREATE INDEX IF NOT EXISTS idx_order_designs_work_item_id ON order_designs(work_item_id);
 
 -- 4. Design Versions - เวอร์ชันการออกแบบ
 CREATE TABLE IF NOT EXISTS design_versions (
@@ -113,9 +121,17 @@ CREATE TABLE IF NOT EXISTS order_mockups (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add work_item_id column if not exists
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'order_mockups' AND column_name = 'work_item_id') THEN
+    ALTER TABLE order_mockups ADD COLUMN work_item_id UUID;
+  END IF;
+END $$;
+
 -- Index for order_mockups
 CREATE INDEX IF NOT EXISTS idx_order_mockups_order_id ON order_mockups(order_id);
-CREATE INDEX IF NOT EXISTS idx_order_mockups_work_item_id ON order_mockups(work_item_id);
 
 -- 6. Order Payments - การชำระเงิน
 CREATE TABLE IF NOT EXISTS order_payments (
