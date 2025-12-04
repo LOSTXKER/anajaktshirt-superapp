@@ -197,10 +197,11 @@ export function useERPWorkTypes() {
   const workTypesByCategory = useMemo(() => {
     const grouped: Record<string, WorkType[]> = {};
     workTypes.forEach((wt) => {
-      if (!grouped[wt.category]) {
-        grouped[wt.category] = [];
+      const category = wt.category || wt.category_code || 'other';
+      if (!grouped[category]) {
+        grouped[category] = [];
       }
-      grouped[wt.category].push(wt);
+      grouped[category].push(wt);
     });
     return grouped;
   }, [workTypes]);

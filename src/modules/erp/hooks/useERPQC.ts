@@ -188,20 +188,21 @@ export function useERPQCForOrder(orderId: string) {
 
   // Group records by stage
   const recordsByStage = qcRecords.reduce((acc, record) => {
-    if (!acc[record.stage]) {
-      acc[record.stage] = [];
+    const stage = record.stage || record.qc_stage_code;
+    if (!acc[stage]) {
+      acc[stage] = [];
     }
-    acc[record.stage].push(record);
+    acc[stage].push(record);
     return acc;
   }, {} as Record<string, QCRecord[]>);
 
   // Calculate pass rate
   const passRate = totalCount > 0 
-    ? (qcRecords.filter(r => r.result === 'pass').length / totalCount) * 100 
+    ? (qcRecords.filter(r => (r.result || r.overall_result) === 'pass').length / totalCount) * 100 
     : 0;
 
   // Summary for the UI (matching QCSummaryCard expected structure)
-  const passed = qcRecords.filter(r => r.result === 'pass').length;
+  const passed = qcRecords.filter(r => (r.result || r.overall_result) === 'pass').length;
   const failed = qcRecords.filter(r => r.result === 'fail').length;
   const rework = qcRecords.filter(r => r.actions?.some(a => a.action_type === 'rework')).length;
   
