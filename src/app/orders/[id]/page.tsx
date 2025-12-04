@@ -31,6 +31,7 @@ import {
   Calculator,
   Calendar,
   Bell,
+  Zap,
 } from 'lucide-react';
 import { useOrder, useOrderStatusHistory, useOrderNotes } from '@/modules/orders/hooks/useOrders';
 import { useOrderMutations } from '@/modules/orders/hooks/useOrderMutations';
@@ -48,6 +49,7 @@ import { SLATimeline } from '@/modules/orders/components/SLATimeline';
 import { DocumentGenerator } from '@/modules/orders/components/DocumentGenerator';
 import { NotificationCenter } from '@/modules/orders/components/NotificationCenter';
 import { OrderEvents } from '@/modules/orders/components/OrderEvents';
+import { QuickActions } from '@/modules/orders/components/QuickActions';
 
 // Order Progress Steps Configuration with Actions
 const ORDER_STEPS = [
@@ -352,7 +354,7 @@ export default function OrderDetailPage() {
   } = useOrderMutations();
 
   // UI State
-  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'design' | 'mockup' | 'payments' | 'production' | 'cost' | 'timeline' | 'events' | 'documents' | 'notifications' | 'notes' | 'history'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'design' | 'mockup' | 'payments' | 'production' | 'cost' | 'timeline' | 'events' | 'actions' | 'documents' | 'notifications' | 'notes' | 'history'>('details');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
   const [statusReason, setStatusReason] = useState('');
@@ -628,6 +630,7 @@ export default function OrderDetailPage() {
           { key: 'cost', label: 'ต้นทุน', icon: Calculator },
           { key: 'timeline', label: 'Timeline', icon: Calendar },
           { key: 'events', label: 'เหตุการณ์', icon: AlertCircle },
+          { key: 'actions', label: 'จัดการ', icon: Zap },
           { key: 'documents', label: 'เอกสาร', icon: FileText },
           { key: 'notifications', label: 'แจ้งเตือน', icon: Bell },
           { key: 'notes', label: 'หมายเหตุ', icon: MessageSquare },
@@ -1107,6 +1110,23 @@ export default function OrderDetailPage() {
               console.log('Resolving event:', eventId, resolution);
               return true;
             }}
+          />
+        )}
+
+        {/* Actions Tab */}
+        {activeTab === 'actions' && (
+          <QuickActions
+            order={order as Order}
+            onStatusChange={async (newStatus, reason) => {
+              const result = await updateOrderStatus(orderId, newStatus, reason);
+              return result.success;
+            }}
+            onAddEvent={async (category, title, description) => {
+              // TODO: Save event to database
+              console.log('Adding event:', { category, title, description });
+              return true;
+            }}
+            onRefresh={refetch}
           />
         )}
 
