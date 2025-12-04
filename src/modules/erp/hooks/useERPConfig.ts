@@ -8,6 +8,32 @@ import type { AddonType } from '../types/addons';
 import { WORK_CATEGORIES, type WorkCategory } from '../types/config';
 
 // ---------------------------------------------
+// CUSTOMER CONFIGS
+// ---------------------------------------------
+
+export const CUSTOMER_TIER_CONFIG = {
+  bronze: { label: 'Bronze', label_th: 'บรอนซ์', color: 'text-amber-700', bgColor: 'bg-amber-100' },
+  silver: { label: 'Silver', label_th: 'ซิลเวอร์', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  gold: { label: 'Gold', label_th: 'โกลด์', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  platinum: { label: 'Platinum', label_th: 'แพลทินัม', color: 'text-purple-600', bgColor: 'bg-purple-100' },
+};
+
+export const CUSTOMER_STATUS_CONFIG = {
+  active: { label: 'Active', label_th: 'ใช้งาน', color: 'text-green-600', bgColor: 'bg-green-100' },
+  inactive: { label: 'Inactive', label_th: 'ไม่ใช้งาน', color: 'text-gray-500', bgColor: 'bg-gray-100' },
+  blocked: { label: 'Blocked', label_th: 'ระงับ', color: 'text-red-600', bgColor: 'bg-red-100' },
+};
+
+export const PAYMENT_TERMS_CONFIG = {
+  cod: { label: 'COD', label_th: 'เก็บเงินปลายทาง' },
+  prepaid: { label: 'Prepaid', label_th: 'ชำระล่วงหน้า' },
+  net7: { label: 'Net 7', label_th: '7 วัน' },
+  net15: { label: 'Net 15', label_th: '15 วัน' },
+  net30: { label: 'Net 30', label_th: '30 วัน' },
+  net60: { label: 'Net 60', label_th: '60 วัน' },
+};
+
+// ---------------------------------------------
 // useERPCustomers
 // ---------------------------------------------
 

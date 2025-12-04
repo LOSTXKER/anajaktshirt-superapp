@@ -12,6 +12,29 @@ import type {
 import type { Pagination } from '../types/common';
 
 // ---------------------------------------------
+// FINANCIAL STATUS CONFIGS
+// ---------------------------------------------
+
+export const QUOTATION_STATUS_CONFIG = {
+  draft: { label: 'Draft', label_th: 'ฉบับร่าง', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  pending: { label: 'Pending', label_th: 'รออนุมัติ', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  sent: { label: 'Sent', label_th: 'ส่งแล้ว', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  accepted: { label: 'Accepted', label_th: 'ยอมรับแล้ว', color: 'text-green-600', bgColor: 'bg-green-100' },
+  rejected: { label: 'Rejected', label_th: 'ปฏิเสธ', color: 'text-red-600', bgColor: 'bg-red-100' },
+  expired: { label: 'Expired', label_th: 'หมดอายุ', color: 'text-gray-500', bgColor: 'bg-gray-100' },
+};
+
+export const INVOICE_STATUS_CONFIG = {
+  draft: { label: 'Draft', label_th: 'ฉบับร่าง', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  pending: { label: 'Pending', label_th: 'รอชำระ', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  sent: { label: 'Sent', label_th: 'ส่งแล้ว', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  partial: { label: 'Partial', label_th: 'ชำระบางส่วน', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  paid: { label: 'Paid', label_th: 'ชำระแล้ว', color: 'text-green-600', bgColor: 'bg-green-100' },
+  overdue: { label: 'Overdue', label_th: 'เกินกำหนด', color: 'text-red-600', bgColor: 'bg-red-100' },
+  cancelled: { label: 'Cancelled', label_th: 'ยกเลิก', color: 'text-gray-500', bgColor: 'bg-gray-100' },
+};
+
+// ---------------------------------------------
 // useERPFinancialSummary
 // ---------------------------------------------
 

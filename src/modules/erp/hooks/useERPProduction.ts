@@ -19,6 +19,30 @@ import type {
 import type { PaginationParams } from '../types/common';
 
 // ---------------------------------------------
+// PRODUCTION CONFIGS
+// ---------------------------------------------
+
+export const JOB_STATUS_CONFIG = {
+  pending: { label: 'Pending', label_th: 'รอดำเนินการ', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  queued: { label: 'Queued', label_th: 'อยู่ในคิว', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  assigned: { label: 'Assigned', label_th: 'มอบหมายแล้ว', color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  in_progress: { label: 'In Progress', label_th: 'กำลังผลิต', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  qc_check: { label: 'QC Check', label_th: 'ตรวจ QC', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  qc_passed: { label: 'QC Passed', label_th: 'ผ่าน QC', color: 'text-green-600', bgColor: 'bg-green-100' },
+  qc_failed: { label: 'QC Failed', label_th: 'ไม่ผ่าน QC', color: 'text-red-600', bgColor: 'bg-red-100' },
+  rework: { label: 'Rework', label_th: 'แก้ไข', color: 'text-red-600', bgColor: 'bg-red-100' },
+  completed: { label: 'Completed', label_th: 'เสร็จสิ้น', color: 'text-green-700', bgColor: 'bg-green-200' },
+  cancelled: { label: 'Cancelled', label_th: 'ยกเลิก', color: 'text-gray-500', bgColor: 'bg-gray-100' },
+};
+
+export const PRIORITY_CONFIG = {
+  0: { label: 'Normal', label_th: 'ปกติ', color: 'text-gray-600', bgColor: 'bg-gray-100', score: 0 },
+  1: { label: 'Urgent', label_th: 'เร่ง', color: 'text-orange-600', bgColor: 'bg-orange-100', score: 20 },
+  2: { label: 'Express', label_th: 'ด่วน', color: 'text-red-600', bgColor: 'bg-red-100', score: 50 },
+  3: { label: 'Critical', label_th: 'ด่วนมาก', color: 'text-red-700', bgColor: 'bg-red-200', score: 100 },
+};
+
+// ---------------------------------------------
 // useERPProductionJobs - Production jobs list
 // ---------------------------------------------
 
