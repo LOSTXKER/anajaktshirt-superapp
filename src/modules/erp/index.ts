@@ -7,7 +7,7 @@
 // Types
 export * from './types';
 
-// Services
+// Services  
 export * from './services';
 
 // Hooks
@@ -16,11 +16,14 @@ export * from './hooks';
 // Components
 export * from './components';
 
-// Repositories (direct access)
+// Repositories (direct Supabase access)
 export { supabaseOrderRepository } from './repositories/supabase/orderRepository';
 export { supabaseProductionRepository } from './repositories/supabase/productionRepository';
 export { supabaseSupplierRepository } from './repositories/supabase/supplierRepository';
 export { supabaseConfigRepository } from './repositories/supabase/configRepository';
+export { supabaseChangeRequestRepository } from './repositories/supabase/changeRequestRepository';
+export { supabaseQCRepository } from './repositories/supabase/qcRepository';
+export { supabaseFinancialRepository } from './repositories/supabase/financialRepository';
 
 // ---------------------------------------------
 // Auto-initialize Repository
