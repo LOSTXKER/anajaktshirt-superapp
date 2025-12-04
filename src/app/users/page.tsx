@@ -54,8 +54,9 @@ export default function UsersPage() {
   const filteredUsers = users.filter(user => {
     if (search) {
       const s = search.toLowerCase();
-      if (!user.email.toLowerCase().includes(s) && 
-          !user.full_name.toLowerCase().includes(s)) {
+      const nameMatch = user.full_name?.toLowerCase().includes(s) || false;
+      const emailMatch = user.email?.toLowerCase().includes(s) || false;
+      if (!nameMatch && !emailMatch) {
         return false;
       }
     }
@@ -274,16 +275,16 @@ export default function UsersPage() {
                     className="flex items-center gap-4 p-4 rounded-xl border border-[#E8E8ED] hover:border-[#D2D2D7] hover:shadow-sm transition-all bg-white"
                   >
                     {/* Avatar */}
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[#1D1D1F] font-bold shadow-lg ${
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg ${
                       user.is_active ? 'bg-gradient-to-br from-[#007AFF] to-[#5AC8FA]' : 'bg-[#86868B]'
                     }`}>
-                      {user.full_name.charAt(0).toUpperCase()}
+                      {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
                     </div>
                     
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-[#1D1D1F]">{user.full_name}</h3>
+                        <h3 className="font-semibold text-[#1D1D1F]">{user.full_name || user.email || 'ไม่ระบุชื่อ'}</h3>
                         {user.role && (
                           <Badge variant={getRoleBadgeVariant(user.role.name)} size="sm">
                             {user.role.display_name}
