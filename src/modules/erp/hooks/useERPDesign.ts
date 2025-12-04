@@ -152,7 +152,7 @@ export function useERPApprovalGates(orderId: string) {
       gate_type: 'mockup_approval',
       status: latestMockup.status === 'approved' ? 'approved' :
               latestMockup.status === 'rejected' ? 'rejected' : 'pending',
-      approved_by: latestMockup.approved_by_customer ? orderId : undefined, // Mock
+      approved_by: latestMockup.approved_by_customer ? orderId : undefined, 
       approved_at: latestMockup.approved_at,
       notes: latestMockup.customer_feedback,
       created_at: latestMockup.created_at,

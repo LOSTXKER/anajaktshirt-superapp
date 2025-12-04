@@ -42,15 +42,15 @@ export { createMockRepository } from './mocks';
 // ---------------------------------------------
 
 import { setRepository, type IRepositoryFactory } from './services/repository';
-import { createMockRepository } from './mocks';
+// import { createMockRepository } from './mocks'; // Mock removed
 import { createSupabaseRepository } from './repositories/supabase';
 
-export type DatabaseProvider = 'mock' | 'supabase' | 'mysql';
+export type DatabaseProvider = 'supabase' | 'mysql';
 
 let isInitialized = false;
 let currentProvider: DatabaseProvider | null = null;
 
-export function initializeERP(provider: DatabaseProvider = 'mock'): void {
+export function initializeERP(provider: DatabaseProvider = 'supabase'): void {
   if (isInitialized && currentProvider === provider) {
     console.log(`ERP already initialized with ${provider}`);
     return;
@@ -59,11 +59,6 @@ export function initializeERP(provider: DatabaseProvider = 'mock'): void {
   let repository: IRepositoryFactory;
 
   switch (provider) {
-    case 'mock':
-      repository = createMockRepository();
-      console.log('🧪 ERP initialized with MOCK data (development mode)');
-      break;
-
     case 'supabase':
       repository = createSupabaseRepository();
       console.log('🗄️ ERP initialized with SUPABASE (production mode)');
@@ -71,19 +66,23 @@ export function initializeERP(provider: DatabaseProvider = 'mock'): void {
 
     case 'mysql':
       // TODO: Implement MySQLRepository (Prisma)
-      // repository = createMySQLRepository();
-      console.warn('⚠️ MySQL repository not implemented yet, falling back to mock');
-      repository = createMockRepository();
+      console.warn('⚠️ MySQL repository not implemented yet, falling back to Supabase');
+      repository = createSupabaseRepository();
       break;
 
     default:
-      console.warn(`⚠️ Unknown provider: ${provider}, falling back to mock`);
-      repository = createMockRepository();
+      console.warn(`⚠️ Unknown provider: ${provider}, using Supabase`);
+      repository = createSupabaseRepository();
   }
 
   setRepository(repository);
   isInitialized = true;
   currentProvider = provider;
+}
+
+// Auto-initialize
+if (typeof window !== 'undefined') {
+  initializeERP('supabase');
 }
 
 export function getERPProvider(): DatabaseProvider | null {
