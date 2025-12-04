@@ -314,7 +314,14 @@ export function useERPOrderConfig() {
     fetchOrderConfig();
   }, []);
 
-  const salesChannels = ['LINE', 'Facebook', 'Instagram', 'Website', 'Walk-in', 'Phone'];
+  const salesChannels = [
+    { code: 'line', name_th: 'LINE' },
+    { code: 'facebook', name_th: 'Facebook' },
+    { code: 'instagram', name_th: 'Instagram' },
+    { code: 'website', name_th: 'Website' },
+    { code: 'walk_in', name_th: 'Walk-in' },
+    { code: 'phone', name_th: 'Phone' },
+  ];
 
   return {
     orderTypes,
