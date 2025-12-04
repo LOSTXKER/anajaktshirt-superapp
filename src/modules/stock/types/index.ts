@@ -1,54 +1,72 @@
-// Product types - สินค้าเสื้อเปล่า
+// =============================================
+// STOCK MODULE TYPES
+// =============================================
+// Updated to match new Products schema (ERP-compatible)
+// =============================================
+
+// Product types - สินค้าเสื้อเปล่า (NEW SCHEMA)
 export interface Product {
   id: string;
-  main_sku: string;      // SKU หลัก (รหัสสินค้าหลัก)
-  sku: string;           // SKU รอง (รหัสเฉพาะ variant)
-  model: string;         // รุ่นเสื้อ (เช่น Hiptrack, Gildan)
-  color: string;         // สี (ชื่อสี)
-  color_hex: string;     // สี (Hex code สำหรับแสดงผล)
-  size: string;          // ไซส์
-  cost: number;          // ต้นทุนต่อหน่วย
-  price: number;         // ราคาขายต่อหน่วย
-  quantity: number;      // จำนวนคงเหลือ
-  min_level: number;     // จุดสั่งซื้อ (Reorder Point)
-  is_active: boolean;    // ⭐ สถานะใช้งาน
-  deleted_at: string | null; // ⭐ Soft delete timestamp
+  code: string;              // Unique product code
+  name: string;              // Product name
+  name_th: string | null;    // Thai name
+  category: string | null;   // Category (shirts, fabric, etc)
+  type: string | null;       // blank, custom, etc.
+  brand: string | null;      // Brand name
+  model: string | null;      // Model (Gildan, Hiptrack, etc)
+  description: string | null;
+  base_price: number;        // Base price
+  sale_price: number;        // Sale price
+  cost_price: number;        // Cost price
+  colors: string[];          // Available colors array
+  sizes: string[];           // Available sizes array
+  min_qty: number;           // Minimum order quantity
+  is_active: boolean;        // Active status
+  in_stock: boolean;         // In stock status
+  stock_qty: number;         // Current stock quantity
+  image_url: string | null;  // Product image
   created_at: string;
   updated_at: string;
 }
 
-// Product Snapshot - สำหรับเก็บใน Order (ไม่เปลี่ยนแปลงตามข้อมูลปัจจุบัน)
+// Product Snapshot - สำหรับเก็บใน Order
 export interface ProductSnapshot {
-  sku: string;
-  main_sku: string;
-  model: string;
+  code: string;
+  name: string;
+  model: string | null;
   color: string;
   size: string;
-  name: string;       // ชื่อเต็ม: "Gildan 76000 White M"
 }
 
+// Form data for creating/editing products
 export interface ProductFormData {
-  main_sku: string;
-  sku: string;
-  model: string;
-  color: string;
-  color_hex?: string;
-  size: string;
-  cost: number;
-  price: number;
-  quantity?: number;
-  min_level?: number;
+  code: string;
+  name: string;
+  name_th?: string;
+  category?: string;
+  type?: string;
+  brand?: string;
+  model?: string;
+  description?: string;
+  base_price: number;
+  sale_price: number;
+  cost_price: number;
+  colors: string[];
+  sizes: string[];
+  min_qty?: number;
+  stock_qty?: number;
+  image_url?: string;
 }
 
 // Transaction types
 export interface Transaction {
   id: string;
   product_id: string;
-  user_id: string;
+  user_id: string | null;
   type: 'IN' | 'OUT' | 'ADJUST';
   quantity: number;
-  reason_category: string | null;  // หมวดหมู่สาเหตุ
-  reason: string | null;           // สาเหตุการเบิก
+  reason_category: string | null;
+  reason: string | null;
   note: string | null;
   ref_order_id: string | null;
   created_at: string;
@@ -68,7 +86,6 @@ export interface TransactionFormData {
 
 // ===== สาเหตุการเบิกสินค้า =====
 
-// สาเหตุจากโรงงานเสื้อเปล่า
 export const FACTORY_DEFECT_REASONS = [
   'เปื้อน (รอยปากกา, คราบสกปรก)',
   'เสื้อขาด/เป็นรู',
@@ -76,7 +93,6 @@ export const FACTORY_DEFECT_REASONS = [
   'สีผ้าไม่สม่ำเสมอ',
 ];
 
-// สาเหตุจากข้อผิดพลาดบุคคล
 export const HUMAN_ERROR_REASONS = [
   'สกรีนผิดลาย',
   'สกรีนผิดสี',
@@ -85,7 +101,6 @@ export const HUMAN_ERROR_REASONS = [
   'สกรีนผิดไซส์เสื้อ',
 ];
 
-// สาเหตุจากข้อผิดพลาดเทคนิค
 export const TECHNICAL_ERROR_REASONS = [
   'ไฟล์ภาพไม่คมชัด (แตก, เบลอ, ฟู)',
   'สีเพี้ยน (ไม่ตรงต้นฉบับ)',
@@ -93,7 +108,6 @@ export const TECHNICAL_ERROR_REASONS = [
   'หมึกติดเสื้อ',
 ];
 
-// สาเหตุการเบิกปกติ
 export const NORMAL_OUT_REASONS = [
   'ส่งงานลูกค้า',
   'ตัวอย่าง/ทดสอบ',
@@ -101,7 +115,6 @@ export const NORMAL_OUT_REASONS = [
   'อื่นๆ',
 ];
 
-// รวมทุกหมวดหมู่
 export const WITHDRAWAL_REASON_CATEGORIES = [
   { 
     id: 'normal',
@@ -138,7 +151,7 @@ export interface ProductFilters {
   stockStatus: 'all' | 'low' | 'normal';
 }
 
-// รุ่นเสื้อ
+// Product models
 export const SHIRT_MODELS = [
   { value: 'Hiptrack', label: 'Hiptrack' },
   { value: 'Gildan', label: 'Gildan' },
@@ -150,24 +163,22 @@ export const SHIRT_MODELS = [
   { value: 'อื่นๆ', label: 'อื่นๆ' },
 ];
 
-// สีเสื้อ
 export const SHIRT_COLORS = [
-  { value: 'ขาว', label: 'ขาว' },
-  { value: 'ดำ', label: 'ดำ' },
-  { value: 'กรม', label: 'กรม' },
-  { value: 'เทา', label: 'เทา' },
-  { value: 'แดง', label: 'แดง' },
-  { value: 'น้ำเงิน', label: 'น้ำเงิน' },
-  { value: 'เขียว', label: 'เขียว' },
-  { value: 'เหลือง', label: 'เหลือง' },
-  { value: 'ชมพู', label: 'ชมพู' },
-  { value: 'ม่วง', label: 'ม่วง' },
-  { value: 'ส้ม', label: 'ส้ม' },
-  { value: 'ครีม', label: 'ครีม' },
-  { value: 'อื่นๆ', label: 'อื่นๆ' },
+  { value: 'ขาว', label: 'ขาว', hex: '#FFFFFF' },
+  { value: 'ดำ', label: 'ดำ', hex: '#000000' },
+  { value: 'กรม', label: 'กรม', hex: '#000080' },
+  { value: 'เทา', label: 'เทา', hex: '#808080' },
+  { value: 'แดง', label: 'แดง', hex: '#FF0000' },
+  { value: 'น้ำเงิน', label: 'น้ำเงิน', hex: '#0000FF' },
+  { value: 'เขียว', label: 'เขียว', hex: '#008000' },
+  { value: 'เหลือง', label: 'เหลือง', hex: '#FFFF00' },
+  { value: 'ชมพู', label: 'ชมพู', hex: '#FFC0CB' },
+  { value: 'ม่วง', label: 'ม่วง', hex: '#800080' },
+  { value: 'ส้ม', label: 'ส้ม', hex: '#FFA500' },
+  { value: 'ครีม', label: 'ครีม', hex: '#FFFDD0' },
+  { value: 'อื่นๆ', label: 'อื่นๆ', hex: '#CCCCCC' },
 ];
 
-// ไซส์เสื้อ
 export const SHIRT_SIZES = [
   { value: 'XS', label: 'XS' },
   { value: 'S', label: 'S' },
@@ -180,7 +191,6 @@ export const SHIRT_SIZES = [
   { value: '5XL', label: '5XL' },
 ];
 
-// Transaction types
 export const TRANSACTION_TYPES = [
   { value: 'IN', label: 'รับเข้า (Stock In)' },
   { value: 'OUT', label: 'เบิกออก (Stock Out)' },

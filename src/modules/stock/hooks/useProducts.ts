@@ -20,10 +20,9 @@ export function useProducts() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .is('deleted_at', null) // ⭐ Filter out soft-deleted products
+        .eq('is_active', true) // Only active products
         .order('model')
-        .order('color')
-        .order('size');
+        .order('name');
 
       if (error) throw error;
       setProducts(data as Product[]);
