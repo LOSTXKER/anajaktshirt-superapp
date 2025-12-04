@@ -1381,59 +1381,6 @@ export const mockWorkItems: OrderWorkItem[] = [
 ];
 
 // ---------------------------------------------
-// Sample Change Requests
-// ---------------------------------------------
-
-export const mockChangeRequests: ChangeRequest[] = [
-  {
-    id: 'cr-001',
-    request_number: 'CR-2024-0001',
-    order_id: 'order-003',
-    order_number: 'ORD-2024-0003',
-    order_phase: 'design',
-    change_type: 'design_revision',
-    change_category: 'minor',
-    title: 'แก้ไขสีโลโก้',
-    description: 'ลูกค้าต้องการเปลี่ยนสีโลโก้จากน้ำเงินเป็นแดง',
-    customer_reason: 'ต้องการให้ตรงกับสีของโรงเรียน',
-    impact: {
-      production_already_started: false,
-      produced_qty: 0,
-      waste_qty: 0,
-      materials_ordered: false,
-      materials_received: false,
-      material_waste_cost: 0,
-      designs_approved: true,
-      design_rework_required: true,
-      affects_due_date: false,
-      delay_days: 0,
-      affects_other_orders: false,
-      impact_level: 'low',
-    },
-    fees: {
-      base_fee: 0,
-      design_fee: 0,
-      rework_fee: 0,
-      material_fee: 0,
-      waste_fee: 0,
-      rush_fee: 0,
-      other_fee: 0,
-      discount: 0,
-      total_fee: 0,
-    },
-    days_delayed: 0,
-    status: 'completed',
-    customer_response: 'accept',
-    customer_responded_at: '2024-12-03T10:00:00Z',
-    payment_status: 'not_required',
-    payment_required: false,
-    completed_at: '2024-12-03T11:00:00Z',
-    created_at: '2024-12-03T09:00:00Z',
-    updated_at: '2024-12-03T11:00:00Z',
-  },
-];
-
-// ---------------------------------------------
 // Production Stations
 // ---------------------------------------------
 
